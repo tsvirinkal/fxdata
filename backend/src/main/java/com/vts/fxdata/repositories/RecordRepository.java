@@ -1,0 +1,26 @@
+package com.vts.fxdata.repositories;
+
+import com.vts.fxdata.entities.Record;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.stereotype.Repository;
+
+import java.util.List;
+
+@Repository
+public interface RecordRepository extends JpaRepository<Record, Long> {
+    @Query(value = "select * from stars order by time desc limit 200", nativeQuery = true)
+    List<Record> getRecordsByDate();
+
+    @Query(value = "select * from stars where pair=:#{#pair} order by time desc limit 200", nativeQuery = true)
+    List<Record> getRecordsByDateAndPair(String pair);
+
+
+    @Query(value = "select * from stars where confirmation=true order by time desc limit 200", nativeQuery = true)
+    List<Record> getConfirmedRecordsByDate();
+
+    @Query(value = "select * from stars where pair=:#{#pair} and confirmation=true order by time desc limit 200", nativeQuery = true)
+    List<Record> getConfirmedRecordsByDateAndPair(String pair);
+
+    List<Record> findByPair(String pair);
+}

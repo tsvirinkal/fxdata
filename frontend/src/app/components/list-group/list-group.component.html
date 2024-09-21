@@ -1,0 +1,25 @@
+<div class="container mt-3">
+    <h3>Records</h3>
+    <ul class="list-group">
+      <li *ngFor="let item of items" class="text-center">
+        <span class="fw-bold text-center">{{ item.date }}</span>
+        <ul>
+          <li *ngFor="let record of item.records" class="list-group-item text-color">
+            <div class="d-flex justify-content-between">
+              <div>
+                <span class="fw-bold">
+                  {{ record.action }} {{ record.pair }} 
+                </span>
+                <span>({{ record.price }})</span>
+              </div>
+              <span class="ms-auto mt-auto">{{ record.time.split(' ')[0] }}</span>
+            </div>
+            <div class="mt-1 text-start">
+              <span>{{ record.timeframe }} {{ record.state }}</span>
+            </div>
+          </li>
+        </ul>
+      </li>
+    </ul>
+  </div>
+  

@@ -1,0 +1,16 @@
+**/src/main/**/target/
+**/src/test/**/target/
+
+### IntelliJ IDEA ###
+/backend/.idea
+/backend/*.iws
+/backend/*.iml
+/backend/*.ipr
+/backend/.mvn
+/backend/HELP.md
+/backend/target/
+
+### VS Code ###
+/frontend/.vscode/
+/frontend/.angular/
+/frontend/node-modules/
