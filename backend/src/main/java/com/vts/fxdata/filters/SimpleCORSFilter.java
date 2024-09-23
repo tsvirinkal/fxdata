@@ -1,8 +1,5 @@
-package com.vts.fxdata.configuration;
+package com.vts.fxdata.filters;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Component;
 
 import jakarta.servlet.*;
@@ -12,24 +9,6 @@ import java.io.IOException;
 
 @Component
 public class SimpleCORSFilter implements Filter {
-//    @Value("${spring.datasource.url}")
-//    private String url;
-//    @Value("${spring.datasource.username}")
-//    private String username;
-//    @Value("${spring.datasource.password}")
-//    private String password;
-//    @Autowired
-//    private Environment environment;
-
-    private final Logger log = LoggerFactory.getLogger(SimpleCORSFilter.class);
-
-    public SimpleCORSFilter(Environment env) {
-//        environment = env;
-        log.info("SimpleCORSFilter init");
-//        log.info("URL: "+environment.getProperty("spring.datasource.url"));
-//        log.info("username: "+environment.getProperty("spring.datasource.username"));
-//        log.info("password: "+environment.getProperty("spring.datasource.password"));
-    }
 
     @Override
     public void doFilter(ServletRequest req, ServletResponse res, FilterChain chain) throws IOException, ServletException {

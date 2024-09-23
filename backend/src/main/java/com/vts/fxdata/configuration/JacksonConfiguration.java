@@ -28,7 +28,6 @@ public class JacksonConfiguration {
     public Jackson2ObjectMapperBuilderCustomizer jackson2ObjectMapperBuilderCustomizer() {
 
         return builder -> {
-
             // formatter
             DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("dd.MM.yyyy");
             DateTimeFormatter dateTimeFormatter =  DateTimeFormatter.ofPattern("HH:mm dd.MM.yyyy");
@@ -45,7 +44,6 @@ public class JacksonConfiguration {
 
     @Bean
     public Jackson2ObjectMapperBuilderCustomizer zonedDateTimeCustomizer() {
-        // AbstractJackson2HttpMessageConverter
         DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm dd.MM.yyyy");
 
         return builder -> {

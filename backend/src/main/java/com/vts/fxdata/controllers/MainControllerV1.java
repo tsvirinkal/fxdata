@@ -14,7 +14,6 @@ import com.niamedtech.expo.exposerversdk.PushClient;
 import com.niamedtech.expo.exposerversdk.PushClientException;
 import com.vts.fxdata.repositories.StateService;
 import org.springframework.beans.factory.annotation.Autowired;
-//import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -47,7 +46,7 @@ public class MainControllerV1 {
     }
 
     @PostMapping("/addrecord")
-    public void addRecord(@RequestBody RecordRequest request, TimeZone timezone) throws PushClientException, InterruptedException {
+    public void addRecord(HttpServletRequest httpRequest, @RequestBody RecordRequest request, TimeZone timezone) throws PushClientException, InterruptedException {
         var rec = new Record(request.getPair(),
                 Timeframe.valueOf(request.getTimeframe()),
                 Action.valueOf(request.getAction()),
@@ -132,11 +131,7 @@ public class MainControllerV1 {
 
     @GetMapping("/pending/{pair}")
     public List<Confirmation> getPendingConfirmations(@PathVariable String pair) {
-        var pending = this.confirmationService.getPendingConfirmations(pair);
-//        pending.forEach(c -> {
-//            c.setTime(ZonedDateTime.ofLocal(c.getTime().toLocalDateTime(), timezone.toZoneId(), zoneOffset).toOffsetDateTime());
-//        });
-        return pending;
+        return this.confirmationService.getPendingConfirmations(pair);
     }
 
     @PostMapping("/state")
@@ -164,15 +159,6 @@ public class MainControllerV1 {
         return stateService.getLastStates(state);
     }
 
-//    @GetMapping("/states/{pair}")
-//    public List<DayStates> getLastStates(
-//            TimeZone timezone,
-//            @PathVariable String pair
-//    ) {
-//        var o =  timezone.getRawOffset();
-//        return this.stateService.getLastStates(pair, timezone);
-//    }
-
     @PostMapping("/addclient")
     public void addClient(@RequestBody ExpoTokenRequest request) {
         if (!PushClient.isExponentPushToken(request.getToken()))
@@ -189,8 +175,6 @@ public class MainControllerV1 {
         // TODO add a retry mechanism in case of a failure
         for (Client client:this.clientService.getClients()) {
             var token = client.getToken();
-
-            // System.out.println("Sending notification to client: "+token);
             NotificationServer.send(token, "Forex Retriever", msgLine1, msgLine2, data);
         }
     }

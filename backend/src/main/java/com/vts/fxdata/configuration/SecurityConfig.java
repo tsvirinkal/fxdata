@@ -15,29 +15,9 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        http
-//                .authorizeHttpRequests(auth -> auth
-//                        .requestMatchers("/login", "/css/**", "/js/**", "/images/**").permitAll() // Allow login and static resources
-//                        .anyRequest().authenticated() // Require authentication for other requests
-//                )
-//                .formLogin(form -> form
-//                        .loginPage("/login") // Custom login page
-//                        .defaultSuccessUrl("/index.html", true)
-//                        .permitAll()
-//                )
-//                .logout(logout -> logout.permitAll())
-//                .sessionManagement(session -> session
-//                        .invalidSessionUrl("/login?invalid-session=true")
-//                );
-                .authorizeHttpRequests(auth -> auth
-                        .anyRequest().authenticated()  // All requests require authentication
-                )
-                .formLogin(form -> form
-                        .permitAll()  // Allow access to the default Spring Security login page
-                )
-                .logout(logout -> logout
-                        .permitAll()  // Allow access to the default logout page
-                );
+        http.authorizeHttpRequests(auth -> auth.anyRequest().authenticated() )
+            .formLogin(form -> form.permitAll())
+            .logout(logout -> logout.permitAll() );
         return http.build();
     }
 

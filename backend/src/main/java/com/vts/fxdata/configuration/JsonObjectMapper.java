@@ -6,11 +6,7 @@ import org.springframework.context.annotation.Configuration;
 
 @Configuration
 public class JsonObjectMapper extends ObjectMapper {
-
     private static final ObjectMapper objectMapper = new JsonObjectMapper();
-
-    public JsonObjectMapper() {
-    }
 
     private ObjectMapper createObjectMapper() {
         ObjectMapper objectMapper = new ObjectMapper();

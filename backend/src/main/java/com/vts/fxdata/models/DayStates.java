@@ -2,7 +2,6 @@ package com.vts.fxdata.models;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.vts.fxdata.entities.ChartState;
-import com.vts.fxdata.entities.Record;
 
 import java.time.LocalDate;
 import java.util.ArrayList;

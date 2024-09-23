@@ -5,15 +5,12 @@ import com.vts.fxdata.entities.ChartState;
 import java.util.*;
 
 public class StatesView {
-
-    private ArrayList<String[]> states;//Map<String, Map<Timeframe, State>> states;
+    private ArrayList<String[]> states;
 
     public StatesView() {
-
     }
 
     public StatesView(List<ChartState> chartStates) {
-        this();
         var sorted = new TreeMap<String, Map<Timeframe, State>>();
         chartStates.forEach(state -> {
             var map = sorted.get(state.getPair());

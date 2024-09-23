@@ -123,11 +123,7 @@ public class MainControllerV2 {
 
     @GetMapping("/pending/{pair}")
     public List<Confirmation> getPendingConfirmations(@PathVariable String pair) {
-        var pending = this.confirmationService.getPendingConfirmations(pair);
-//        pending.forEach(c -> {
-//            c.setTime(ZonedDateTime.ofLocal(c.getTime().toLocalDateTime(), timezone.toZoneId(), zoneOffset).toOffsetDateTime());
-//        });
-        return pending;
+        return this.confirmationService.getPendingConfirmations(pair);
     }
 
     @PostMapping("/state")
@@ -155,15 +151,6 @@ public class MainControllerV2 {
         return stateService.getLastStates(state);
     }
 
-//    @GetMapping("/states/{pair}")
-//    public List<DayStates> getLastStates(
-//            TimeZone timezone,
-//            @PathVariable String pair
-//    ) {
-//        var o =  timezone.getRawOffset();
-//        return this.stateService.getLastStates(pair, timezone);
-//    }
-
     @PostMapping("/addclient")
     public void addClient(@RequestBody ExpoTokenRequest request) {
         if (!PushClient.isExponentPushToken(request.getToken()))
@@ -176,7 +163,6 @@ public class MainControllerV2 {
         }
     }
 
-    //@PostMapping("/confirm/{recordId}")
     private void requestConfirmation(Record rec) {
         var pending = getPendingConfirmations(rec.getPair()).stream().filter(c -> c.getTimeframe()==rec.getTimeframe()).findFirst();
         if (!pending.isPresent()) {
@@ -191,8 +177,6 @@ public class MainControllerV2 {
         // TODO add a retry mechanism in case of a failure
         for (Client client:this.clientService.getClients()) {
             var token = client.getToken();
-
-            // System.out.println("Sending notification to client: "+token);
             NotificationServer.send(token, "Forex Retriever", msgLine1, msgLine2, data);
         }
     }
