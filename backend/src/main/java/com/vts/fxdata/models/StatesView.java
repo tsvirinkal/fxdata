@@ -11,7 +11,7 @@ public class StatesView {
     }
 
     public StatesView(List<ChartState> chartStates) {
-        var sorted = new TreeMap<String, Map<Timeframe, State>>();
+        var sorted = new TreeMap<String, Map<Timeframe, StateEnum>>();
         chartStates.forEach(state -> {
             var map = sorted.get(state.getPair());
             if (map==null) {

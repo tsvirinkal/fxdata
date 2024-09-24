@@ -1,6 +1,7 @@
 package com.vts.fxdata.entities;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.vts.fxdata.models.StateEnum;
 import com.vts.fxdata.models.Timeframe;
 import org.springframework.format.annotation.DateTimeFormat;
 
@@ -28,14 +29,14 @@ public class ChartState {
     private Long Id;
     private String pair;
     private Timeframe timeframe;
-    private com.vts.fxdata.models.State state;
+    private StateEnum state;
 
     @Column(columnDefinition= "TIMESTAMP WITH TIME ZONE DEFAULT now()")
     @DateTimeFormat(iso= DateTimeFormat.ISO.DATE_TIME)
     @JsonFormat(pattern = "HH:mm dd.MM.yyyy")
     private LocalDateTime time;
 
-    public ChartState(Long id, String pair, Timeframe timeframe, com.vts.fxdata.models.State state) {
+    public ChartState(Long id, String pair, Timeframe timeframe, StateEnum state) {
         this();
         this.Id = id;
         this.pair = pair;
@@ -43,7 +44,7 @@ public class ChartState {
         this.state = state;
     }
 
-    public ChartState(String pair, Timeframe timeframe, com.vts.fxdata.models.State state) {
+    public ChartState(String pair, Timeframe timeframe, StateEnum state) {
         this();
         this.pair = pair;
         this.timeframe = timeframe;
@@ -77,11 +78,11 @@ public class ChartState {
         this.timeframe = timeframe;
     }
 
-    public com.vts.fxdata.models.State getState() {
+    public StateEnum getState() {
         return state;
     }
 
-    public void setState(com.vts.fxdata.models.State state) {
+    public void setState(StateEnum state) {
         this.state = state;
     }
 

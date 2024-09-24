@@ -29,19 +29,6 @@ public class RecordService {
 
     public void addRecord(Record record)
     {
-//        var saveAdded = record.getAdded();
-//        var now = this.fxDataRepository.findOne(Example.of(record));
-//        if (now.isEmpty()) {
-//            this.fxDataRepository.save(record);
-//            return;
-//        }
-//
-//        var time = record.getAdded();
-//        record.setAdded(new Time(time.getTime()-1000));
-//        var recent = this.fxDataRepository.findOne(Example.of(record));
-//        if (!recent.isEmpty()) return;
-//
-//        record.setAdded(saveAdded);
         this.recordRepository.save(record);
     }
 
@@ -64,6 +51,7 @@ public class RecordService {
     @Transactional
     public void deleteRecord(long id) {
         this.recordRepository.deleteById(id);
+
     }
 
     public void saveAndFlush(Record record) {

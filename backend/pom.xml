@@ -10,7 +10,7 @@
 	</parent>
 	<groupId>com.vts</groupId>
 	<artifactId>fxdata</artifactId>
-	<version>0.0.3-SNAPSHOT</version>
+	<version>0.1.0-SNAPSHOT</version>
 	<name>fxdata</name>
 	<description>Web application for collecting and categorizing FX data.</description>
 	<properties>
@@ -112,6 +112,11 @@
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-security</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>ch.qos.logback</groupId>
+			<artifactId>logback-classic</artifactId>
+			<version>1.5.7</version>
 		</dependency>
 
 	</dependencies>

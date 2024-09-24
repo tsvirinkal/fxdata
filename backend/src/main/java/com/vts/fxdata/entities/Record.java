@@ -2,7 +2,7 @@ package com.vts.fxdata.entities;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.vts.fxdata.models.Action;
-import com.vts.fxdata.models.State;
+import com.vts.fxdata.models.StateEnum;
 import com.vts.fxdata.models.Timeframe;
 import org.springframework.format.annotation.DateTimeFormat;
 
@@ -31,18 +31,19 @@ public class Record {
     private String pair;
     private Timeframe timeframe;
     private Action action;
-    private State state;
+    private StateEnum state;
 
     private Double price;
 
     private boolean confirmation;
+    private String confirmationDelay;
 
     @Column(columnDefinition= "TIMESTAMP WITH TIME ZONE DEFAULT now()")
     @DateTimeFormat(iso= DateTimeFormat.ISO.DATE_TIME)
     @JsonFormat(pattern = "HH:mm dd.MM.yyyy")
     private LocalDateTime time;
 
-    public Record(Long id, String pair, Timeframe timeframe, Action action, State state, Double price, boolean confirmation) {
+    public Record(Long id, String pair, Timeframe timeframe, Action action, StateEnum state, Double price, boolean confirmation) {
         this();
         this.Id = id;
         this.pair = pair;
@@ -53,7 +54,7 @@ public class Record {
         this.confirmation = confirmation;
     }
 
-    public Record(String pair, Timeframe timeframe, Action action, State state, Double price, boolean confirmation) {
+    public Record(String pair, Timeframe timeframe, Action action, StateEnum state, Double price, boolean confirmation) {
         this();
         this.pair = pair;
         this.timeframe = timeframe;
@@ -98,11 +99,11 @@ public class Record {
         this.action = action;
     }
 
-    public State getState() {
+    public StateEnum getState() {
         return state;
     }
 
-    public void setState(State state) {
+    public void setState(StateEnum state) {
         this.state = state;
     }
 
@@ -111,8 +112,11 @@ public class Record {
     }
 
     public void setTime(LocalDateTime time) {
-
-        this.time = time;
+        if (this.time==null) {
+            this.time = time;
+        } else {
+            setConfirmationDelay(formatDuration(this.time, time));
+        }
     }
 
     public Double getPrice() {
@@ -130,5 +134,41 @@ public class Record {
     public void setConfirmation(boolean confirmation) {
         this.confirmation = confirmation;
     }
+
+    public String getConfirmationDelay() {
+        return this.confirmationDelay;
+    }
+
+    public void setConfirmationDelay(String delay) {
+        this.confirmationDelay = delay;
+    }
+    private static String formatDuration(LocalDateTime start, LocalDateTime end) {
+        // Calculate the duration between the two DateTime objects
+        Duration duration = Duration.between(start, end);
+
+        // Get the total seconds of the duration
+        long totalSeconds = duration.getSeconds();
+
+        // Extract the hours, minutes, and seconds
+        long days = totalSeconds / 86400;
+        long hours = totalSeconds / 3600;
+        long minutes = (totalSeconds % 3600) / 60;
+        long seconds = totalSeconds % 60;
+        String ret = "";
+        if (days>0) {
+            ret += String.format("%02dd", days);
+        }
+        if (hours>0) {
+            ret += String.format(" %02dh", hours);
+        }
+        if (minutes>0) {
+            ret += String.format(" %02dm", minutes);
+        }
+        if (seconds>0) {
+            ret += String.format(" %02ds", seconds);
+        }
+        return ret;
+    }
+
 }
 

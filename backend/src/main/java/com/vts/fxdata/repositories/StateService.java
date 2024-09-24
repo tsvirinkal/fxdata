@@ -2,7 +2,7 @@ package com.vts.fxdata.repositories;
 
 import com.vts.fxdata.entities.ChartState;
 import com.vts.fxdata.models.DayStates;
-import com.vts.fxdata.models.State;
+import com.vts.fxdata.models.StateEnum;
 import com.vts.fxdata.models.StatesView;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -50,7 +50,7 @@ public class StateService {
         return convertToDayStatesList(this.stateRepository.getStates(pair), timezone);
     }
 
-    public StatesView getLastStates(State state) {
+    public StatesView getLastStates(StateEnum state) {
         List<ChartState> ret;
         if (state==null)
             ret = this.stateRepository.getStates();

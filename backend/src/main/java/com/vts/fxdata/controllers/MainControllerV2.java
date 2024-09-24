@@ -5,9 +5,8 @@ import com.niamedtech.expo.exposerversdk.PushClient;
 import com.niamedtech.expo.exposerversdk.PushClientException;
 import com.vts.fxdata.entities.ChartState;
 import com.vts.fxdata.entities.Client;
-import com.vts.fxdata.entities.Confirmation;
-import com.vts.fxdata.entities.Record;
 import com.vts.fxdata.models.*;
+import com.vts.fxdata.models.Record;
 import com.vts.fxdata.notifications.NotificationServer;
 import com.vts.fxdata.repositories.ClientService;
 import com.vts.fxdata.repositories.ConfirmationService;
@@ -15,6 +14,8 @@ import com.vts.fxdata.repositories.RecordService;
 import com.vts.fxdata.repositories.StateService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -51,16 +52,20 @@ public class MainControllerV2 {
     }
 
     @PostMapping("/addrecord")
-    public void addRecord(@RequestBody RecordRequest request) throws PushClientException, InterruptedException {
-        var rec = new Record(request.getPair(),
-                Timeframe.valueOf(request.getTimeframe()),
-                Action.valueOf(request.getAction()),
-                State.valueOf(request.getState()),
-                request.getPrice(),
-                false);
-        this.recordService.addRecord(rec);
-
-        requestConfirmation(rec);
+    public ResponseEntity<String> addRecord(@RequestBody Record request) throws PushClientException, InterruptedException {
+        try {
+            var rec = new com.vts.fxdata.entities.Record(request.getPair(),
+                    Timeframe.valueOf(request.getTimeframe()),
+                    Action.valueOf(request.getAction()),
+                    StateEnum.valueOf(request.getState()),
+                    request.getPrice(),
+                    false);
+            this.recordService.addRecord(rec);
+            requestConfirmation(rec);
+        } catch (Exception e) {
+            return new ResponseEntity<>(e.getMessage(), HttpStatus.BAD_REQUEST);
+        }
+        return new ResponseEntity<>(null, HttpStatus.CREATED);
     }
 
     @GetMapping("/")
@@ -76,82 +81,94 @@ public class MainControllerV2 {
     }
 
     @PostMapping("/delete/{recordId}")
-    public void deleteRecord(@PathVariable Long recordId) {
-        this.recordService.deleteRecord(recordId);
+    public ResponseEntity<String> deleteRecord(@PathVariable Long recordId) {
+        try {
+            this.recordService.deleteRecord(recordId);
+        } catch (Exception e) {
+            return new ResponseEntity<>(e.getMessage(), HttpStatus.BAD_REQUEST);
+        }
+        return new ResponseEntity<>(null, HttpStatus.OK);
     }
 
     @PostMapping("/confirmed")
-    public void confirmationFound(@RequestBody ConfirmationRequest request) throws PushClientException, InterruptedException {
+    public ResponseEntity<String> confirmationFound(@RequestBody Confirmation request) throws PushClientException, InterruptedException {
 
         var pending = this.confirmationService.findById(request.getId());
-        if (pending.isPresent()) {
-            var confirmation = pending.get();
-            var rec = confirmation.getRecordIds().stream().findFirst();
-            if (rec.isPresent())
-            {
-                // mark record confirmed
-                var record = this.recordService.getRecordById(rec.get().longValue());
-                if (record.isPresent()) {
-                    var rec2 = record.get();
-                    rec2.setConfirmation(true);
-                    rec2.setTime(LocalDateTime.now());
-                    if (request.getPrice()>0) rec2.setPrice(request.getPrice());
-                    this.recordService.saveAndFlush(rec2);
-
-                    var data = new HashMap<String, Object>();
-                    data.put("pair", rec2.getPair());
-                    data.put("action", rec2.getAction());
-                    data.put("timeframe", rec2.getTimeframe());
-                    data.put("state", rec2.getState());
-                    data.put("price", request.getPrice());
-                    data.put("id", rec2.getId());
-
-                    // send out notifications
-                    String message = String.format("%s %s  (%s)",rec2.getAction(),rec2.getPair(),rec2.getPrice());
-                    pushNotifications(message,rec2.getTimeframe()+" "+rec2.getState(), data);
-                }
-            }
-
-            var data = new HashMap<String, Object>();
-            data.put("id", request.getRecordId());
-            // send out one notification per confirmation
-           // pushNotifications("Confirmation found for", confirmation.getAction() + " " + confirmation.getPair() + "," + confirmation.getTimeframe(), data);
-
-            this.confirmationService.deleteConfirmation(request.getId());
+        if (!pending.isPresent()) {
+            return new ResponseEntity<>("Confirmation not found", HttpStatus.NOT_FOUND);
         }
+
+        var confirmation = pending.get();
+        var recordId = confirmation.getRecordIds().stream().findFirst();
+        if (!recordId.isPresent()) {
+            return new ResponseEntity<>("Record ID not found", HttpStatus.NOT_FOUND);
+        }
+
+        // mark record confirmed
+        var optionalRecord = this.recordService.getRecordById(recordId.get().longValue());
+        if (!optionalRecord.isPresent()) {
+            return new ResponseEntity<>("Record not found", HttpStatus.NOT_FOUND);
+        }
+
+        var record = optionalRecord.get();
+        record.setConfirmation(true);
+        record.setTime(LocalDateTime.now());
+        if (request.getPrice()>0) record.setPrice(request.getPrice());
+        this.recordService.saveAndFlush(record);
+
+        var data = new HashMap<String, Object>();
+        data.put("pair", record.getPair());
+        data.put("action", record.getAction());
+        data.put("timeframe", record.getTimeframe());
+        data.put("state", record.getState());
+        data.put("price", request.getPrice());
+        data.put("id", record.getId());
+
+        // send out notifications
+        String message = String.format("%s %s  (%s)",record.getAction(),record.getPair(),record.getPrice());
+        pushNotifications(message,record.getTimeframe()+" "+record.getState(), data);
+
+        this.confirmationService.deleteConfirmation(request.getId());
+        return new ResponseEntity<>(null, HttpStatus.OK);
     }
 
     @GetMapping("/pending/{pair}")
-    public List<Confirmation> getPendingConfirmations(@PathVariable String pair) {
+    public List<com.vts.fxdata.entities.Confirmation> getPendingConfirmations(@PathVariable String pair) {
         return this.confirmationService.getPendingConfirmations(pair);
     }
 
     @PostMapping("/state")
-    public void setChartState(@RequestBody StateRequest request, TimeZone timezone) throws PushClientException, InterruptedException {
-        var state = new ChartState(request.getPair(),
-                Timeframe.valueOf(request.getTimeframe()),
-                State.valueOf(request.getState()));
+    public ResponseEntity<String> setChartState(@RequestBody State request, TimeZone timezone) throws PushClientException, InterruptedException {
+        try {
+            var state = new ChartState(request.getPair(),
+                    Timeframe.valueOf(request.getTimeframe()),
+                    StateEnum.valueOf(request.getState()));
 
-        if (this.stateService.setState(state)) {
-            // new state, send notification
+            if (this.stateService.setState(state)) {
+                // new state, send notification
 
-            var data = new HashMap<String, Object>();
-            data.put("pair", state.getPair());
-            data.put("timeframe", state.getTimeframe());
-            data.put("state", state.getState());
+                var data = new HashMap<String, Object>();
+                data.put("pair", state.getPair());
+                data.put("timeframe", state.getTimeframe());
+                data.put("state", state.getState());
 
-            // send out notifications
-            String message = String.format("%s on %s %s", state.getState(), state.getPair(), state.getTimeframe());
-            pushNotifications(message, "", data);
+                // send out notifications
+                String message = String.format("%s on %s %s", state.getState(), state.getPair(), state.getTimeframe());
+                pushNotifications(message, "", data);
+            }
+        } catch (Exception e) {
+            return new ResponseEntity<>(e.getMessage(), HttpStatus.BAD_REQUEST);
         }
+        return new ResponseEntity<>(null, HttpStatus.OK);
     }
 
     @GetMapping("/states/")
-    public StatesView getStates(@RequestParam(value = "state", required = false)  State state, TimeZone timezone) {
+    public StatesView getStates(@RequestParam(value = "state", required = false) StateEnum state, TimeZone timezone) {
         return stateService.getLastStates(state);
     }
 
     @PostMapping("/addclient")
+    @Deprecated
     public void addClient(@RequestBody ExpoTokenRequest request) {
         if (!PushClient.isExponentPushToken(request.getToken()))
             return;
@@ -163,11 +180,11 @@ public class MainControllerV2 {
         }
     }
 
-    private void requestConfirmation(Record rec) {
+    private void requestConfirmation(com.vts.fxdata.entities.Record rec) {
         var pending = getPendingConfirmations(rec.getPair()).stream().filter(c -> c.getTimeframe()==rec.getTimeframe()).findFirst();
         if (!pending.isPresent()) {
             this.confirmationService.requestConfirmation(
-                    new Confirmation(rec.getPair(),rec.getTimeframe(),rec.getAction(),
+                    new com.vts.fxdata.entities.Confirmation(rec.getPair(),rec.getTimeframe(),rec.getAction(),
                             rec.getTime(),rec.getId()));
             this.confirmationService.deleteOppositePending(rec);
         }
@@ -177,7 +194,7 @@ public class MainControllerV2 {
         // TODO add a retry mechanism in case of a failure
         for (Client client:this.clientService.getClients()) {
             var token = client.getToken();
-            NotificationServer.send(token, "Forex Retriever", msgLine1, msgLine2, data);
+            NotificationServer.send(token, "FxData", msgLine1, msgLine2, data);
         }
     }
 }

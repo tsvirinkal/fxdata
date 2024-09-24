@@ -3,9 +3,8 @@ package com.vts.fxdata.controllers;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.vts.fxdata.entities.ChartState;
 import com.vts.fxdata.entities.Client;
-import com.vts.fxdata.entities.Confirmation;
-import com.vts.fxdata.entities.Record;
 import com.vts.fxdata.models.*;
+import com.vts.fxdata.models.Record;
 import com.vts.fxdata.notifications.NotificationServer;
 import com.vts.fxdata.repositories.ClientService;
 import com.vts.fxdata.repositories.ConfirmationService;
@@ -46,11 +45,11 @@ public class MainControllerV1 {
     }
 
     @PostMapping("/addrecord")
-    public void addRecord(HttpServletRequest httpRequest, @RequestBody RecordRequest request, TimeZone timezone) throws PushClientException, InterruptedException {
-        var rec = new Record(request.getPair(),
+    public void addRecord(HttpServletRequest httpRequest, @RequestBody Record request, TimeZone timezone) throws PushClientException, InterruptedException {
+        var rec = new com.vts.fxdata.entities.Record(request.getPair(),
                 Timeframe.valueOf(request.getTimeframe()),
                 Action.valueOf(request.getAction()),
-                State.valueOf(request.getState()),
+                StateEnum.valueOf(request.getState()),
                 request.getPrice(),
                 false);
         this.recordService.addRecord(rec);
@@ -97,14 +96,14 @@ public class MainControllerV1 {
                 this.confirmationService.requestConfirmation(pendingConfirmation);
             } else {
                 this.confirmationService.requestConfirmation(
-                        new Confirmation(rec.getPair(),rec.getTimeframe(),rec.getAction(),
+                        new com.vts.fxdata.entities.Confirmation(rec.getPair(),rec.getTimeframe(),rec.getAction(),
                                 rec.getTime(),rec.getId()));
             }
         }
     }
 
     @PostMapping("/confirmed")
-    public void confirmationFound(@RequestBody ConfirmationRequest request) throws PushClientException, InterruptedException {
+    public void confirmationFound(@RequestBody Confirmation request) throws PushClientException, InterruptedException {
 
         var pending = this.confirmationService.findById(request.getId());
         if (pending.isPresent()) {
@@ -130,15 +129,15 @@ public class MainControllerV1 {
     }
 
     @GetMapping("/pending/{pair}")
-    public List<Confirmation> getPendingConfirmations(@PathVariable String pair) {
+    public List<com.vts.fxdata.entities.Confirmation> getPendingConfirmations(@PathVariable String pair) {
         return this.confirmationService.getPendingConfirmations(pair);
     }
 
     @PostMapping("/state")
-    public void setChartState(@RequestBody StateRequest request, TimeZone timezone) throws PushClientException, InterruptedException {
+    public void setChartState(@RequestBody State request, TimeZone timezone) throws PushClientException, InterruptedException {
         var state = new ChartState(request.getPair(),
                 Timeframe.valueOf(request.getTimeframe()),
-                State.valueOf(request.getState()));
+                StateEnum.valueOf(request.getState()));
 
         if (this.stateService.setState(state)) {
             // new state, send notification
@@ -155,7 +154,7 @@ public class MainControllerV1 {
     }
 
     @GetMapping("/states/")
-    public StatesView getStates(@RequestParam(value = "state", required = false)  State state, TimeZone timezone) {
+    public StatesView getStates(@RequestParam(value = "state", required = false) StateEnum state, TimeZone timezone) {
         return stateService.getLastStates(state);
     }
 
@@ -175,7 +174,7 @@ public class MainControllerV1 {
         // TODO add a retry mechanism in case of a failure
         for (Client client:this.clientService.getClients()) {
             var token = client.getToken();
-            NotificationServer.send(token, "Forex Retriever", msgLine1, msgLine2, data);
+            NotificationServer.send(token, "FxData", msgLine1, msgLine2, data);
         }
     }
 }

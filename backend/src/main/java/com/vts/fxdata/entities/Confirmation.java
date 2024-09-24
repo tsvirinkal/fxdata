@@ -80,7 +80,7 @@ public class Confirmation {
         return time;
     }
 
-    public void s2s(LocalDateTime time) {
+    public void setTime(LocalDateTime time) {
         this.time = time;
     }
 

@@ -18,6 +18,12 @@ public class SecurityConfig {
         http.authorizeHttpRequests(auth -> auth.anyRequest().authenticated() )
             .formLogin(form -> form.permitAll())
             .logout(logout -> logout.permitAll() );
+
+// Disable security
+//        http.authorizeHttpRequests((requests) -> requests
+//                .anyRequest().permitAll()
+//        );
+//        http.csrf().disable();
         return http.build();
     }
 

@@ -1,6 +1,6 @@
 package com.vts.fxdata.models;
 
-public class ConfirmationRequest {
+public class Confirmation {
     private String pair;
     private String timeframe;
     private String action;
