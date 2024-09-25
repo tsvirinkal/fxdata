@@ -10,17 +10,16 @@ import java.util.List;
 @Repository
 public interface RecordRepository extends JpaRepository<Record, Long> {
     @Query(value = "select * from stars order by time desc limit 200", nativeQuery = true)
-    List<Record> getRecordsByDate();
+    List<Record> getRecords();
 
     @Query(value = "select * from stars where pair=:#{#pair} order by time desc limit 200", nativeQuery = true)
     List<Record> getRecordsByDateAndPair(String pair);
 
-
     @Query(value = "select * from stars where confirmation=true order by time desc limit 200", nativeQuery = true)
-    List<Record> getConfirmedRecordsByDate();
+    List<Record> getConfirmedRecords();
 
     @Query(value = "select * from stars where pair=:#{#pair} and confirmation=true order by time desc limit 200", nativeQuery = true)
-    List<Record> getConfirmedRecordsByDateAndPair(String pair);
+    List<Record> getConfirmedRecordsByPair(String pair);
 
     List<Record> findByPair(String pair);
 }

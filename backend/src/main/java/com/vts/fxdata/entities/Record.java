@@ -65,10 +65,7 @@ public class Record {
     }
 
     public Record() {
-        var nowUtc = LocalDateTime.now(ZoneOffset.UTC);
-        // remove seconds and milliseconds
-        nowUtc = nowUtc.truncatedTo(ChronoUnit.SECONDS);
-        this.setTime(nowUtc);
+        this.setTime(LocalDateTime.now(ZoneOffset.UTC));
     }
 
     public Long getId() {
@@ -112,11 +109,9 @@ public class Record {
     }
 
     public void setTime(LocalDateTime time) {
-        if (this.time==null) {
-            this.time = time;
-        } else {
-            setConfirmationDelay(formatDuration(this.time, time));
-        }
+        // remove seconds and milliseconds
+        time = time.truncatedTo(ChronoUnit.SECONDS);
+        this.time = time;
     }
 
     public Double getPrice() {
@@ -139,36 +134,27 @@ public class Record {
         return this.confirmationDelay;
     }
 
-    public void setConfirmationDelay(String delay) {
-        this.confirmationDelay = delay;
+    public void setConfirmationDelay(LocalDateTime time) {
+        this.confirmationDelay = formatDuration(this.time, time);
     }
-    private static String formatDuration(LocalDateTime start, LocalDateTime end) {
-        // Calculate the duration between the two DateTime objects
-        Duration duration = Duration.between(start, end);
 
-        // Get the total seconds of the duration
+    private static String formatDuration(LocalDateTime start, LocalDateTime end) {
+        Duration duration = Duration.between(start, end);
         long totalSeconds = duration.getSeconds();
 
         // Extract the hours, minutes, and seconds
         long days = totalSeconds / 86400;
         long hours = totalSeconds / 3600;
         long minutes = (totalSeconds % 3600) / 60;
-        long seconds = totalSeconds % 60;
         String ret = "";
         if (days>0) {
-            ret += String.format("%02dd", days);
+            ret += String.format("%02dd ", days);
         }
         if (hours>0) {
-            ret += String.format(" %02dh", hours);
+            ret += String.format("%02dh ", hours);
         }
-        if (minutes>0) {
-            ret += String.format(" %02dm", minutes);
-        }
-        if (seconds>0) {
-            ret += String.format(" %02ds", seconds);
-        }
+        ret += String.format("%02dm", minutes);
         return ret;
     }
-
 }
 

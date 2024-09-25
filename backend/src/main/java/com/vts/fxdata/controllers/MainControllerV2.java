@@ -20,9 +20,8 @@ import org.springframework.web.bind.annotation.*;
 
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.LocalDateTime;
-import java.util.HashMap;
+import java.time.ZoneOffset;
 import java.util.List;
-import java.util.Map;
 import java.util.TimeZone;
 
 @RestController
@@ -99,34 +98,30 @@ public class MainControllerV2 {
         }
 
         var confirmation = pending.get();
-        var recordId = confirmation.getRecordIds().stream().findFirst();
-        if (!recordId.isPresent()) {
+        var unconfirmedRecordIds = confirmation.getRecordIds();
+        if (unconfirmedRecordIds.size() == 0) {
             return new ResponseEntity<>("Record ID not found", HttpStatus.NOT_FOUND);
         }
 
-        // mark record confirmed
-        var optionalRecord = this.recordService.getRecordById(recordId.get().longValue());
-        if (!optionalRecord.isPresent()) {
-            return new ResponseEntity<>("Record not found", HttpStatus.NOT_FOUND);
+        // mark all unconfirmed records confirmed
+        com.vts.fxdata.entities.Record record = null;
+        for (Long recordId : unconfirmedRecordIds) {
+            var optRecord = this.recordService.getRecordById(recordId);
+            if (optRecord.isEmpty()) continue;
+
+            record = optRecord.get();
+            record.setConfirmation(true);
+            record.setTime(LocalDateTime.now(ZoneOffset.UTC));
+            record.setConfirmationDelay(LocalDateTime.now(ZoneOffset.UTC));
+            if (request.getPrice()>0) {
+                record.setPrice(request.getPrice());
+            }
+            this.recordService.saveAndFlush(record);
         }
 
-        var record = optionalRecord.get();
-        record.setConfirmation(true);
-        record.setTime(LocalDateTime.now());
-        if (request.getPrice()>0) record.setPrice(request.getPrice());
-        this.recordService.saveAndFlush(record);
-
-        var data = new HashMap<String, Object>();
-        data.put("pair", record.getPair());
-        data.put("action", record.getAction());
-        data.put("timeframe", record.getTimeframe());
-        data.put("state", record.getState());
-        data.put("price", request.getPrice());
-        data.put("id", record.getId());
-
         // send out notifications
-        String message = String.format("%s %s  (%s)",record.getAction(),record.getPair(),record.getPrice());
-        pushNotifications(message,record.getTimeframe()+" "+record.getState(), data);
+        String message = String.format("%s %s  (%s)", record.getAction(), record.getPair(), record.getPrice());
+        pushNotifications(message, record.getTimeframe() + " " + record.getState() + "              " + record.getConfirmationDelay());
 
         this.confirmationService.deleteConfirmation(request.getId());
         return new ResponseEntity<>(null, HttpStatus.OK);
@@ -146,15 +141,8 @@ public class MainControllerV2 {
 
             if (this.stateService.setState(state)) {
                 // new state, send notification
-
-                var data = new HashMap<String, Object>();
-                data.put("pair", state.getPair());
-                data.put("timeframe", state.getTimeframe());
-                data.put("state", state.getState());
-
-                // send out notifications
                 String message = String.format("%s on %s %s", state.getState(), state.getPair(), state.getTimeframe());
-                pushNotifications(message, "", data);
+                pushNotifications(message, "");
             }
         } catch (Exception e) {
             return new ResponseEntity<>(e.getMessage(), HttpStatus.BAD_REQUEST);
@@ -182,19 +170,23 @@ public class MainControllerV2 {
 
     private void requestConfirmation(com.vts.fxdata.entities.Record rec) {
         var pending = getPendingConfirmations(rec.getPair()).stream().filter(c -> c.getTimeframe()==rec.getTimeframe()).findFirst();
-        if (!pending.isPresent()) {
-            this.confirmationService.requestConfirmation(
+        if (pending.isPresent()) {
+            var pendingConfirmation = pending.get();
+            pendingConfirmation.setRecordId(rec.getId());
+            this.confirmationService.saveConfirmation(pendingConfirmation);
+        } else {
+            this.confirmationService.saveConfirmation(
                     new com.vts.fxdata.entities.Confirmation(rec.getPair(),rec.getTimeframe(),rec.getAction(),
                             rec.getTime(),rec.getId()));
             this.confirmationService.deleteOppositePending(rec);
         }
     }
 
-    private void pushNotifications(String msgLine1, String msgLine2, Map<String, Object> data) throws PushClientException, InterruptedException {
+    private void pushNotifications(String msgLine1, String msgLine2) throws PushClientException {
         // TODO add a retry mechanism in case of a failure
         for (Client client:this.clientService.getClients()) {
             var token = client.getToken();
-            NotificationServer.send(token, "FxData", msgLine1, msgLine2, data);
+            NotificationServer.send(token, "FxData", msgLine1, msgLine2);
         }
     }
 }

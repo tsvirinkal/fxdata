@@ -19,7 +19,7 @@ import java.util.stream.Collectors;
 public class NotificationServer {
     private static final ExecutorService executor = Executors.newSingleThreadExecutor();
 
-    public static void send(String recipient, String title, String msgLine1, String msgLine2, Map<String, Object> data) throws PushClientException, InterruptedException {
+    public static void send(String recipient, String title, String msgLine1, String msgLine2) throws PushClientException {
 
         if (!PushClient.isExponentPushToken(recipient))
             throw new Error("Token:" + recipient + " is not a valid token.");
@@ -27,9 +27,7 @@ public class NotificationServer {
         ExpoPushMessage expoPushMessage = new ExpoPushMessage();
         expoPushMessage.getTo().add(recipient);
         expoPushMessage.setTitle(msgLine1);
-        //expoPushMessage.setSubtitle(msgLine1);
         expoPushMessage.setBody(msgLine2);
-        expoPushMessage.setData(data);
 
         List<ExpoPushMessage> expoPushMessages = new ArrayList<>();
         expoPushMessages.add(expoPushMessage);

@@ -54,17 +54,9 @@ public class MainControllerV1 {
                 false);
         this.recordService.addRecord(rec);
 
-        var data = new HashMap<String, Object>();
-        data.put("pair", rec.getPair());
-        data.put("action", rec.getAction());
-        data.put("timeframe", rec.getTimeframe());
-        data.put("state", rec.getState());
-        data.put("price", rec.getPrice());
-        data.put("id", rec.getId());
-
         // send out notifications
         String message = String.format("%s %s  (%s)",rec.getAction(),rec.getPair(),rec.getPrice());
-        pushNotifications(message,rec.getTimeframe()+" "+rec.getState(), data);
+        pushNotifications(message,rec.getTimeframe()+" "+rec.getState());
     }
 
     @GetMapping("/")
@@ -93,9 +85,9 @@ public class MainControllerV1 {
             if (pending.isPresent()) {
                 var pendingConfirmation = pending.get();
                 pendingConfirmation.getRecordIds().add(recordId);
-                this.confirmationService.requestConfirmation(pendingConfirmation);
+                this.confirmationService.saveConfirmation(pendingConfirmation);
             } else {
-                this.confirmationService.requestConfirmation(
+                this.confirmationService.saveConfirmation(
                         new com.vts.fxdata.entities.Confirmation(rec.getPair(),rec.getTimeframe(),rec.getAction(),
                                 rec.getTime(),rec.getId()));
             }
@@ -119,10 +111,8 @@ public class MainControllerV1 {
                 }
             });
 
-            var data = new HashMap<String, Object>();
-            data.put("id", request.getRecordId());
             // send out one notification per confirmation
-            pushNotifications("Confirmation found for", confirmation.getAction() + " " + confirmation.getPair() + "," + confirmation.getTimeframe(), data);
+            pushNotifications("Confirmation found for", confirmation.getAction() + " " + confirmation.getPair() + "," + confirmation.getTimeframe());
 
             this.confirmationService.deleteConfirmation(request.getId());
         }
@@ -141,15 +131,8 @@ public class MainControllerV1 {
 
         if (this.stateService.setState(state)) {
             // new state, send notification
-
-            var data = new HashMap<String, Object>();
-            data.put("pair", state.getPair());
-            data.put("timeframe", state.getTimeframe());
-            data.put("state", state.getState());
-
-            // send out notifications
             String message = String.format("%s on %s %s", state.getState(), state.getPair(), state.getTimeframe());
-            pushNotifications(message, "", data);
+            pushNotifications(message, "");
         }
     }
 
@@ -170,11 +153,11 @@ public class MainControllerV1 {
         }
     }
 
-    private void pushNotifications(String msgLine1, String msgLine2, Map<String, Object> data) throws PushClientException, InterruptedException {
+    private void pushNotifications(String msgLine1, String msgLine2) throws PushClientException, InterruptedException {
         // TODO add a retry mechanism in case of a failure
         for (Client client:this.clientService.getClients()) {
             var token = client.getToken();
-            NotificationServer.send(token, "FxData", msgLine1, msgLine2, data);
+            NotificationServer.send(token, "FxData", msgLine1, msgLine2);
         }
     }
 }

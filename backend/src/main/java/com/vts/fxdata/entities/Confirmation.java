@@ -7,6 +7,7 @@ import org.springframework.format.annotation.DateTimeFormat;
 
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -46,7 +47,7 @@ public class Confirmation {
         this.timeframe = timeframe;
         this.time = time;
         this.action = action;
-        this.recordIds = List.of(recordId);
+        this.recordIds = new ArrayList<>() { { add(recordId); }};
     }
 
     public Confirmation() {
@@ -84,8 +85,8 @@ public class Confirmation {
         this.time = time;
     }
 
-    public List<Long> getRecordIds() { return recordIds;}
+    public List<Long> getRecordIds() { return recordIds; }
 
-    public void setRecordId(Long recordId) { recordId = recordId;}
+    public void setRecordId(Long recordId) { recordIds.add(recordId); }
 }
 
