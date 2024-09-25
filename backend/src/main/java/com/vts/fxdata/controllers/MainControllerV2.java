@@ -111,17 +111,15 @@ public class MainControllerV2 {
 
             record = optRecord.get();
             record.setConfirmation(true);
-            record.setTime(LocalDateTime.now(ZoneOffset.UTC));
             record.setConfirmationDelay(LocalDateTime.now(ZoneOffset.UTC));
-            if (request.getPrice()>0) {
-                record.setPrice(request.getPrice());
-            }
+            record.setTime(LocalDateTime.now(ZoneOffset.UTC));
+            record.setPrice(request.getPrice());
             this.recordService.saveAndFlush(record);
         }
 
         // send out notifications
         String message = String.format("%s %s  (%s)", record.getAction(), record.getPair(), record.getPrice());
-        pushNotifications(message, record.getTimeframe() + " " + record.getState() + "              " + record.getConfirmationDelay());
+        pushNotifications(message, record.getTimeframe() + " " + record.getState() + "                " + record.getConfirmationDelay());
 
         this.confirmationService.deleteConfirmation(request.getId());
         return new ResponseEntity<>(null, HttpStatus.OK);
