@@ -3,6 +3,7 @@ export interface Record {
     action: string;
     confirmation: boolean;
     confirmationDelay: string;
+    notes: string;
     pair: string;
     price: number;
     state: string;

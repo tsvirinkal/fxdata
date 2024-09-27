@@ -38,6 +38,8 @@ public class Record {
     private boolean confirmation;
     private String confirmationDelay;
 
+    private String notes;
+
     @Column(columnDefinition= "TIMESTAMP WITH TIME ZONE DEFAULT now()")
     @DateTimeFormat(iso= DateTimeFormat.ISO.DATE_TIME)
     @JsonFormat(pattern = "HH:mm dd.MM.yyyy")
@@ -128,14 +130,21 @@ public class Record {
 
     public void setConfirmation(boolean confirmation) {
         this.confirmation = confirmation;
+        if (confirmation) {
+            this.confirmationDelay = formatDuration(this.time, LocalDateTime.now(ZoneOffset.UTC));
+        }
     }
 
     public String getConfirmationDelay() {
         return this.confirmationDelay;
     }
 
-    public void setConfirmationDelay(LocalDateTime time) {
-        this.confirmationDelay = formatDuration(this.time, time);
+    public String getNotes() {
+        return notes;
+    }
+
+    public void setNotes(String notes) {
+        this.notes = notes;
     }
 
     private static String formatDuration(LocalDateTime start, LocalDateTime end) {

@@ -107,7 +107,7 @@ public class MainControllerV1 {
                 if (record.isPresent()) {
                     var rec = record.get();
                     rec.setConfirmation(true);
-                    this.recordService.saveAndFlush(rec);
+                    this.recordService.save(rec);
                 }
             });
 

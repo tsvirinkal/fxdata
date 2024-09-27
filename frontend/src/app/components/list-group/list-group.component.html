@@ -5,19 +5,7 @@
         <span class="fw-bold text-center">{{ item.date }}</span>
         <ul>
           <li *ngFor="let record of item.records" class="list-group-item text-color">
-            <div class="d-flex justify-content-between">
-              <div>
-                <span class="fw-bold">
-                  {{ record.action }} {{ record.pair }} 
-                </span>
-                <span>({{ record.price }})</span>
-              </div>
-              <span class="ms-auto mt-auto">{{ record.time.split(' ')[0] }}</span>
-            </div>
-            <div class="d-flex justify-content-between">
-              <span>{{ record.timeframe }} {{ record.state }}</span>
-              <span>{{ record.confirmationDelay }}</span>
-            </div>
+            <list-item [item]="record"></list-item>
           </li>
         </ul>
       </li>

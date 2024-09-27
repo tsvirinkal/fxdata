@@ -1,0 +1,20 @@
+<div class="d-flex justify-content-between" (click)="toggleVisibility()">
+<div>
+    <span class="fw-bold">
+    {{ item.action }} {{ item.pair }} 
+    </span>
+    <span>({{ item.price }})</span>
+</div>
+<span class="ms-auto mt-auto">{{ item.time.split(' ')[0] }}</span>
+</div>
+<div class="d-flex justify-content-between subtext">
+    <span>{{ item.timeframe }} {{ item.state }}</span>
+    <span>{{ item.confirmationDelay }}</span>
+</div>
+<div *ngIf="isVisible" class="d-flex justify-content-between">
+    <ul class="list-group notes">
+      <li *ngFor="let n of notes" class="text-center">
+        <span>{{ n }}</span>
+      </li>
+    </ul>
+</div>

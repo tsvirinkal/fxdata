@@ -21,7 +21,9 @@ import org.springframework.web.bind.annotation.*;
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.util.Collections;
 import java.util.List;
+import java.util.Stack;
 import java.util.TimeZone;
 
 @RestController
@@ -97,29 +99,56 @@ public class MainControllerV2 {
             return new ResponseEntity<>("Confirmation not found", HttpStatus.NOT_FOUND);
         }
 
-        var confirmation = pending.get();
-        var unconfirmedRecordIds = confirmation.getRecordIds();
-        if (unconfirmedRecordIds.size() == 0) {
-            return new ResponseEntity<>("Record ID not found", HttpStatus.NOT_FOUND);
+        // mark the newest record as confirmed and delete the rest
+        var unconfirmedRecordIds = pending.get().getRecordIds();
+        Collections.reverse(unconfirmedRecordIds);
+        var iterator = unconfirmedRecordIds.iterator();
+        String errorMessage = null;
+        var notesBuilder = new StringBuilder();
+        com.vts.fxdata.entities.Record confirmedRecord = null;
+        try {
+            if (!iterator.hasNext()) {
+                return new ResponseEntity<>("No records found", HttpStatus.NOT_FOUND);
+            }
+            var recordId = iterator.next();
+            confirmedRecord = this.recordService.getRecordById(recordId).get();
+
+            notesBuilder.append("Confirmed record ID: ")
+                .append(recordId)
+                .append(" created on ")
+                .append(confirmedRecord.getTime().minusMinutes(240))
+                .append("\n")
+                .append("Other records:\n");
+
+            while(iterator.hasNext()) {
+                var otherId = iterator.next();
+                var r = this.recordService.getRecordById(otherId).get();
+                notesBuilder.append("Deleted record ID: ")
+                        .append(otherId)
+                        .append(" created on ")
+                        .append(r.getTime().minusMinutes(240))
+                        .append("\n");
+                this.recordService.deleteRecord(otherId);
+            }
+
+            confirmedRecord.setConfirmation(true);
+            confirmedRecord.setTime(LocalDateTime.now(ZoneOffset.UTC));
+            confirmedRecord.setPrice(request.getPrice());
+            confirmedRecord.setNotes(notesBuilder.toString());
+            this.recordService.save(confirmedRecord);
+        } catch(Exception e) {
+            errorMessage = e.getMessage()+"\r\n"+notesBuilder;
         }
 
-        // mark all unconfirmed records confirmed
-        com.vts.fxdata.entities.Record record = null;
-        for (Long recordId : unconfirmedRecordIds) {
-            var optRecord = this.recordService.getRecordById(recordId);
-            if (optRecord.isEmpty()) continue;
-
-            record = optRecord.get();
-            record.setConfirmation(true);
-            record.setConfirmationDelay(LocalDateTime.now(ZoneOffset.UTC));
-            record.setTime(LocalDateTime.now(ZoneOffset.UTC));
-            record.setPrice(request.getPrice());
-            this.recordService.saveAndFlush(record);
+        if (errorMessage!=null) {
+            return new ResponseEntity<>(errorMessage, HttpStatus.INTERNAL_SERVER_ERROR);
         }
 
         // send out notifications
-        String message = String.format("%s %s  (%s)", record.getAction(), record.getPair(), record.getPrice());
-        pushNotifications(message, record.getTimeframe() + " " + record.getState() + "                " + record.getConfirmationDelay());
+        String message = String.format("%s %s  (%s)", confirmedRecord.getAction(),
+                confirmedRecord.getPair(), confirmedRecord.getPrice());
+        pushNotifications(message, confirmedRecord.getTimeframe() + " " + confirmedRecord.getState() +
+                " ".repeat(24-confirmedRecord.getConfirmationDelay().length()) + confirmedRecord.getConfirmationDelay());
 
         this.confirmationService.deleteConfirmation(request.getId());
         return new ResponseEntity<>(null, HttpStatus.OK);

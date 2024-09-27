@@ -15,3 +15,6 @@
 .text-color {
     color: rgb(101, 100, 100);
 }
+.subtext {
+    font-size: smaller;
+}

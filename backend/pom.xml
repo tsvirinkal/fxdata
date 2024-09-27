@@ -10,11 +10,12 @@
 	</parent>
 	<groupId>com.vts</groupId>
 	<artifactId>fxdata</artifactId>
-	<version>0.1.5-SNAPSHOT</version>
+	<version>${revision}</version>
 	<name>fxdata</name>
 	<description>Web application for collecting and categorizing FX data.</description>
 	<properties>
 		<java.version>17</java.version>
+		<revision>0.0.1-SNAPSHOT</revision>
 	</properties>
 	<repositories>
 		<repository>

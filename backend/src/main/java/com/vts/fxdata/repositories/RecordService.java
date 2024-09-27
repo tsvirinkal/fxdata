@@ -46,8 +46,8 @@ public class RecordService {
         this.recordRepository.deleteById(id);
     }
 
-    public void saveAndFlush(Record record) {
-        this.recordRepository.saveAndFlush(record);
+    public void save(Record record) {
+        this.recordRepository.save(record);
     }
 
     public Optional<Record> getRecordById(long id) {
