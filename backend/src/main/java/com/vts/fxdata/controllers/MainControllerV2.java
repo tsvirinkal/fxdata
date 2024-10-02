@@ -23,7 +23,6 @@ import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.Collections;
 import java.util.List;
-import java.util.Stack;
 import java.util.TimeZone;
 
 @RestController
@@ -117,8 +116,11 @@ public class MainControllerV2 {
                 .append(recordId)
                 .append(" created on ")
                 .append(confirmedRecord.getTime().minusMinutes(240))
-                .append("\n")
-                .append("Other records:\n");
+                .append("\n");
+
+            if (iterator.hasNext()) {
+                notesBuilder.append("Other records:\n");
+            }
 
             while(iterator.hasNext()) {
                 var otherId = iterator.next();

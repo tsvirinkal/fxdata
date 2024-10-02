@@ -1,14 +1,13 @@
 <div class="container mt-3">
-    <h3>Records</h3>
-    <ul class="list-group">
-      <li *ngFor="let item of items" class="text-center">
-        <span class="fw-bold text-center">{{ item.date }}</span>
-        <ul>
-          <li *ngFor="let record of item.records" class="list-group-item text-color">
-            <list-item [item]="record"></list-item>
-          </li>
-        </ul>
-      </li>
-    </ul>
-  </div>
+  <ul class="list-group">
+    <li *ngFor="let item of items" class="text-center">
+      <span class="fw-bold text-center">{{ item.date }}</span>
+      <ul>
+        <li *ngFor="let record of item.records" class="list-group-item text-color">
+          <list-item [item]="record"></list-item>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
   

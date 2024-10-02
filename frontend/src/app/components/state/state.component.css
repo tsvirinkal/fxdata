@@ -1,0 +1,11 @@
+.container {
+    width: 810px;
+    min-width: 810px;
+}
+.headers {
+    height: 2em;
+    vertical-align: middle;
+}
+.column {
+    width: 200px;
+}

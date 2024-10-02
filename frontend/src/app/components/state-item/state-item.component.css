@@ -1,0 +1,37 @@
+.cell {
+    width: 200px; 
+    height: 44px; 
+    background-size: cover; 
+    background-position: center; 
+    background-repeat: no-repeat; 
+    vertical-align: text-bottom;
+  }
+  .bullish {
+    background-image: url('../../../assets/bullish.png');
+  }
+  .bearish {
+    background-image: url('../../../assets/bearish.png');
+  }
+  .range {
+    background-image: url('../../../assets/range.png');
+  }
+  .progressbar {
+    width: 100%;
+    height: 10px;
+    transform-origin: 68%;  
+  }
+  .target {
+    font-size: 10pt; 
+    margin-left: -30px;
+  }
+  .action {
+    font-size: 16pt; 
+    float: right;
+    padding-right: 30px;
+    padding-bottom: 3px;
+    margin-top: -1px;
+  }
+  .state {
+    font-size: 12pt; 
+    vertical-align: text-bottom;
+  }
