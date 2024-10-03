@@ -1,6 +1,6 @@
-package com.vts.fxdata.models;
+package com.vts.fxdata.models.dto;
 
-public class ExpoTokenRequest {
+public class ExpoToken {
     private String token;
 
     public String getToken() {

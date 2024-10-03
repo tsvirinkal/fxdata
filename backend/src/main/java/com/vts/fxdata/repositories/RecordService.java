@@ -1,7 +1,7 @@
 package com.vts.fxdata.repositories;
 
 import com.vts.fxdata.entities.Record;
-import com.vts.fxdata.models.DayRecords;
+import com.vts.fxdata.models.dto.DayRecords;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

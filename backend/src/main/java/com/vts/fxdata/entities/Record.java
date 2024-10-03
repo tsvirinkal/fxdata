@@ -1,7 +1,7 @@
 package com.vts.fxdata.entities;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
-import com.vts.fxdata.models.Action;
+import com.vts.fxdata.models.ActionEnum;
 import com.vts.fxdata.models.StateEnum;
 import com.vts.fxdata.models.Timeframe;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -30,7 +30,7 @@ public class Record {
     private Long Id;
     private String pair;
     private Timeframe timeframe;
-    private Action action;
+    private ActionEnum actionEnum;
     private StateEnum state;
 
     private Double price;
@@ -45,22 +45,22 @@ public class Record {
     @JsonFormat(pattern = "HH:mm dd.MM.yyyy")
     private LocalDateTime time;
 
-    public Record(Long id, String pair, Timeframe timeframe, Action action, StateEnum state, Double price, boolean confirmation) {
+    public Record(Long id, String pair, Timeframe timeframe, ActionEnum actionEnum, StateEnum state, Double price, boolean confirmation) {
         this();
         this.Id = id;
         this.pair = pair;
         this.timeframe = timeframe;
-        this.action = action;
+        this.actionEnum = actionEnum;
         this.state = state;
         this.price = price;
         this.confirmation = confirmation;
     }
 
-    public Record(String pair, Timeframe timeframe, Action action, StateEnum state, Double price, boolean confirmation) {
+    public Record(String pair, Timeframe timeframe, ActionEnum actionEnum, StateEnum state, Double price, boolean confirmation) {
         this();
         this.pair = pair;
         this.timeframe = timeframe;
-        this.action = action;
+        this.actionEnum = actionEnum;
         this.state = state;
         this.price = price;
         this.confirmation = confirmation;
@@ -90,12 +90,12 @@ public class Record {
         this.timeframe = timeframe;
     }
 
-    public Action getAction() {
-        return action;
+    public ActionEnum getAction() {
+        return actionEnum;
     }
 
-    public void setAction(Action action) {
-        this.action = action;
+    public void setAction(ActionEnum actionEnum) {
+        this.actionEnum = actionEnum;
     }
 
     public StateEnum getState() {

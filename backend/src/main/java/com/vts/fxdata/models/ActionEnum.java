@@ -1,6 +1,6 @@
 package com.vts.fxdata.models;
 
-public enum Action {
+public enum ActionEnum {
     Buy,
     Sell
 }

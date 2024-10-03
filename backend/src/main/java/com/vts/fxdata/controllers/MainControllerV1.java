@@ -3,8 +3,10 @@ package com.vts.fxdata.controllers;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.vts.fxdata.entities.ChartState;
 import com.vts.fxdata.entities.Client;
+import com.vts.fxdata.models.State;
 import com.vts.fxdata.models.*;
-import com.vts.fxdata.models.Record;
+import com.vts.fxdata.models.dto.*;
+import com.vts.fxdata.models.dto.Record;
 import com.vts.fxdata.notifications.NotificationServer;
 import com.vts.fxdata.repositories.ClientService;
 import com.vts.fxdata.repositories.ConfirmationService;
@@ -48,7 +50,7 @@ public class MainControllerV1 {
     public void addRecord(HttpServletRequest httpRequest, @RequestBody Record request, TimeZone timezone) throws PushClientException, InterruptedException {
         var rec = new com.vts.fxdata.entities.Record(request.getPair(),
                 Timeframe.valueOf(request.getTimeframe()),
-                Action.valueOf(request.getAction()),
+                ActionEnum.valueOf(request.getAction()),
                 StateEnum.valueOf(request.getState()),
                 request.getPrice(),
                 false);
@@ -124,12 +126,12 @@ public class MainControllerV1 {
     }
 
     @PostMapping("/state")
-    public void setChartState(@RequestBody State request, TimeZone timezone) throws PushClientException, InterruptedException {
-        var state = new ChartState(request.getPair(),
-                Timeframe.valueOf(request.getTimeframe()),
-                StateEnum.valueOf(request.getState()));
+    public void setChartState(@RequestBody State state) throws PushClientException, InterruptedException {
+        var chartState = new ChartState(state.getPair(),
+                Timeframe.valueOf(state.getTimeframe()),
+                StateEnum.valueOf(state.getState()));
 
-        if (this.stateService.setState(state)) {
+        if (this.stateService.setState(chartState)) {
             // new state, send notification
             String message = String.format("%s on %s %s", state.getState(), state.getPair(), state.getTimeframe());
             pushNotifications(message, "");
@@ -137,12 +139,12 @@ public class MainControllerV1 {
     }
 
     @GetMapping("/states/")
-    public StatesView getStates(@RequestParam(value = "state", required = false) StateEnum state, TimeZone timezone) {
+    public List<Pair> getStates(@RequestParam(value = "state", required = false) StateEnum state, TimeZone timezone) {
         return stateService.getLastStates(state);
     }
 
     @PostMapping("/addclient")
-    public void addClient(@RequestBody ExpoTokenRequest request) {
+    public void addClient(@RequestBody ExpoToken request) {
         if (!PushClient.isExponentPushToken(request.getToken()))
             return;
 

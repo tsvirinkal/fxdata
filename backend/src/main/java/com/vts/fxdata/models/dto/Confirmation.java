@@ -1,4 +1,4 @@
-package com.vts.fxdata.models;
+package com.vts.fxdata.models.dto;
 
 public class Confirmation {
     private String pair;

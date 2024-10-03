@@ -3,7 +3,8 @@ package com.vts.fxdata.repositories;
 import com.vts.fxdata.entities.ChartState;
 import com.vts.fxdata.models.DayStates;
 import com.vts.fxdata.models.StateEnum;
-import com.vts.fxdata.models.StatesView;
+import com.vts.fxdata.models.dto.Pair;
+import com.vts.fxdata.models.dto.StatesView;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -41,22 +42,22 @@ public class StateService {
         // not modified
         return false;
     }
+//
+//    public List<DayStates> getLastStates(TimeZone timezone) {
+//        return convertToDayStatesList(this.stateRepository.getStates(), timezone);
+//    }
+//
+//    public List<DayStates> getLastStates(String pair, TimeZone timezone) {
+//        return convertToDayStatesList(this.stateRepository.getStates(pair), timezone);
+//    }
 
-    public List<DayStates> getLastStates(TimeZone timezone) {
-        return convertToDayStatesList(this.stateRepository.getStates(), timezone);
-    }
-
-    public List<DayStates> getLastStates(String pair, TimeZone timezone) {
-        return convertToDayStatesList(this.stateRepository.getStates(pair), timezone);
-    }
-
-    public StatesView getLastStates(StateEnum state) {
+    public List<Pair> getLastStates(StateEnum state) {
         List<ChartState> ret;
         if (state==null)
             ret = this.stateRepository.getStates();
         else
             ret = this.stateRepository.getStates(state.ordinal());
-        return new StatesView(ret);
+        return StatesView.getPairs(ret);
     }
 
     @Transactional

@@ -2,6 +2,7 @@ import { Component, Input } from '@angular/core';
 import { NgClass, NgIf } from '@angular/common'; 
 import { State } from '../../models/state.model';
 import { NgbProgressbarModule } from '@ng-bootstrap/ng-bootstrap';
+import { Action } from 'rxjs/internal/scheduler/Action';
 
 @Component({
   selector: 'state-item',
@@ -19,6 +20,6 @@ export class StateItemComponent {
   }
 
   hasAction(): boolean {
-    return this.item.action.length>0;
+    return this.item.action instanceof Action;
   }
 }

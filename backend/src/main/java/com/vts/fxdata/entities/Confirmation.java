@@ -1,14 +1,13 @@
 package com.vts.fxdata.entities;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
-import com.vts.fxdata.models.Action;
+import com.vts.fxdata.models.ActionEnum;
 import com.vts.fxdata.models.Timeframe;
 import org.springframework.format.annotation.DateTimeFormat;
 
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 @Entity
@@ -36,17 +35,17 @@ public class Confirmation {
     private Timeframe timeframe;
 
     @Enumerated(EnumType.STRING)
-    private Action action;
+    private ActionEnum actionEnum;
     @Column(columnDefinition= "TIMESTAMP WITH TIME ZONE DEFAULT now()")
     @DateTimeFormat(iso= DateTimeFormat.ISO.DATE_TIME)
     @JsonFormat(pattern = "HH:mm dd.MM.yyyy")
     private LocalDateTime time;
 
-    public Confirmation(String pair, Timeframe timeframe, Action action, LocalDateTime time, long recordId) {
+    public Confirmation(String pair, Timeframe timeframe, ActionEnum actionEnum, LocalDateTime time, long recordId) {
         this.pair = pair;
         this.timeframe = timeframe;
         this.time = time;
-        this.action = action;
+        this.actionEnum = actionEnum;
         this.recordIds = new ArrayList<>() { { add(recordId); }};
     }
 
@@ -73,9 +72,9 @@ public class Confirmation {
         this.timeframe = timeframe;
     }
 
-    public Action getAction() { return action; }
+    public ActionEnum getAction() { return actionEnum; }
 
-    public void setAction(Action action) { this.action = action; }
+    public void setAction(ActionEnum actionEnum) { this.actionEnum = actionEnum; }
 
     public LocalDateTime getTime() {
         return time;

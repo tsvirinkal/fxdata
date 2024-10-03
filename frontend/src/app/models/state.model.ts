@@ -1,10 +1,9 @@
+import { Action } from "./action.model";
+
 export interface State {
-    id: number;
+    action?: Action;
     state: string;
     time: string;
     timeframe: string;
-    target: number;
-    action: string;
-    progress: number;
   }
   

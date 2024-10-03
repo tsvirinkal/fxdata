@@ -1,4 +1,4 @@
-package com.vts.fxdata.models;
+package com.vts.fxdata.models.dto;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.vts.fxdata.entities.Record;

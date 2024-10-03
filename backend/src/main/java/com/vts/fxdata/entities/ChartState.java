@@ -1,6 +1,7 @@
 package com.vts.fxdata.entities;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.vts.fxdata.models.State;
 import com.vts.fxdata.models.StateEnum;
 import com.vts.fxdata.models.Timeframe;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -56,6 +57,12 @@ public class ChartState {
         // remove seconds and milliseconds
         nowUtc = nowUtc.truncatedTo(ChronoUnit.SECONDS);
         this.setTime(nowUtc);
+    }
+
+    public static ChartState newInstance(State state) {
+        return new ChartState(state.getPair(),
+                Timeframe.valueOf(state.getTimeframe()),
+                StateEnum.valueOf(state.getState()));
     }
 
     public Long getId() {

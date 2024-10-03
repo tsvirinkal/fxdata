@@ -5,8 +5,10 @@ import com.niamedtech.expo.exposerversdk.PushClient;
 import com.niamedtech.expo.exposerversdk.PushClientException;
 import com.vts.fxdata.entities.ChartState;
 import com.vts.fxdata.entities.Client;
+import com.vts.fxdata.models.State;
 import com.vts.fxdata.models.*;
-import com.vts.fxdata.models.Record;
+import com.vts.fxdata.models.dto.*;
+import com.vts.fxdata.models.dto.Record;
 import com.vts.fxdata.notifications.NotificationServer;
 import com.vts.fxdata.repositories.ClientService;
 import com.vts.fxdata.repositories.ConfirmationService;
@@ -56,7 +58,7 @@ public class MainControllerV2 {
         try {
             var rec = new com.vts.fxdata.entities.Record(request.getPair(),
                     Timeframe.valueOf(request.getTimeframe()),
-                    Action.valueOf(request.getAction()),
+                    ActionEnum.valueOf(request.getAction()),
                     StateEnum.valueOf(request.getState()),
                     request.getPrice(),
                     false);
@@ -162,13 +164,9 @@ public class MainControllerV2 {
     }
 
     @PostMapping("/state")
-    public ResponseEntity<String> setChartState(@RequestBody State request, TimeZone timezone) throws PushClientException, InterruptedException {
+    public ResponseEntity<String> setChartState(@RequestBody State state) {
         try {
-            var state = new ChartState(request.getPair(),
-                    Timeframe.valueOf(request.getTimeframe()),
-                    StateEnum.valueOf(request.getState()));
-
-            if (this.stateService.setState(state)) {
+            if (this.stateService.setState(ChartState.newInstance(state))) {
                 // new state, send notification
                 String message = String.format("%s on %s %s", state.getState(), state.getPair(), state.getTimeframe());
                 pushNotifications(message, "");
@@ -180,13 +178,13 @@ public class MainControllerV2 {
     }
 
     @GetMapping("/states/")
-    public StatesView getStates(@RequestParam(value = "state", required = false) StateEnum state, TimeZone timezone) {
+    public List<Pair> getStates(@RequestParam(value = "state", required = false) StateEnum state, TimeZone timezone) {
         return stateService.getLastStates(state);
     }
 
     @PostMapping("/addclient")
     @Deprecated
-    public void addClient(@RequestBody ExpoTokenRequest request) {
+    public void addClient(@RequestBody ExpoToken request) {
         if (!PushClient.isExponentPushToken(request.getToken()))
             return;
 
