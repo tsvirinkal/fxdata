@@ -11,9 +11,9 @@
     <tbody>
       <tr *ngFor="let item of items">
         <td class="p-1 column">{{ item.name }}</td>
-        <td class="p-0 column"><state-item [item]="item.states[0]"></state-item></td>
-        <td class="p-0 column"><state-item [item]="item.states[1]"></state-item></td>
-        <td class="p-0 column"><state-item [item]="item.states[2]"></state-item></td>
+        <td class="column"><state-item [item]="item.states[0]"></state-item></td>
+        <td class="column"><state-item [item]="item.states[1]"></state-item></td>
+        <td class="column"><state-item [item]="item.states[2]"></state-item></td>
       </tr>
     </tbody>
   </table>

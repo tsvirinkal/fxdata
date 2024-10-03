@@ -19,6 +19,7 @@
     width: 100%;
     height: 10px;
     transform-origin: 68%;  
+    border-radius: 0 !important;
   }
   .target {
     font-size: 10pt; 

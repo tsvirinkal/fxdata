@@ -2,7 +2,7 @@ import { Component, Input } from '@angular/core';
 import { NgClass, NgIf } from '@angular/common'; 
 import { State } from '../../models/state.model';
 import { NgbProgressbarModule } from '@ng-bootstrap/ng-bootstrap';
-import { Action } from 'rxjs/internal/scheduler/Action';
+import { Action } from "../../models/action.model";
 
 @Component({
   selector: 'state-item',

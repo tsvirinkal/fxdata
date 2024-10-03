@@ -1,7 +1,6 @@
 
-<div class="m-0 cell" [ngClass]="getStateClass()">
+<div class="cell" [ngClass]="getStateClass()">
     <span *ngIf="hasAction()" class="target">Target {{ item.action!.target }} pips</span>
-    <span *ngIf="!hasAction()" class="state">{{ item.state }}</span>
-    <span class="action">{{ item.action }}</span>
+    <span *ngIf="hasAction()" class="action">{{ item.action!.action }}</span>
     <ngb-progressbar *ngIf="hasAction()" class="mb-3 progressbar" type="secondary" textType="light" [value]="item.action!.progress" [showValue]="true" />
 </div>
