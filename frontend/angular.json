@@ -48,7 +48,13 @@
               "outputPath": {
                 "base": "../backend/src/main/resources/static/",
                 "browser": ""
-              }
+              },
+              "fileReplacements": [
+                {
+                  "replace": "src/environments/environment.ts",
+                  "with": "src/environments/environment.prod.ts"
+                }
+              ]
             },
             "development": {
               "optimization": false,
