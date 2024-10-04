@@ -13,7 +13,7 @@ SEPARATOR="#####################################################################
 cd ../frontend
 echo $SEPARATOR
 echo "Building frontend..."
-ng build
+ng build --configuration=production
 cd ../backend
 echo
 echo $SEPARATOR

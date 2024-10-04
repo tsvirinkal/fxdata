@@ -16,7 +16,7 @@ import { Action } from "../../models/action.model";
 export class StatesComponent implements OnInit {
 
   items: Pair[] = [];
-  records = new Map();
+  internal: Pair[] = [];
 
   constructor(private dataService: DataService) {}
 
@@ -25,7 +25,7 @@ export class StatesComponent implements OnInit {
     this.dataService.getStates()
     .pipe(
       mergeMap(states => {
-        this.items = states;
+        this.internal = states;
         // query for action updates
         return this.dataService.getData();
       })
@@ -33,14 +33,15 @@ export class StatesComponent implements OnInit {
     .subscribe(data => {
       for (const day of data.reverse()) {
         for (const rec of day.records.reverse()) {
-          this.records.set(rec.pair+rec.timeframe, rec);
-          const pair = this.items.find(item => item.name === rec.pair);
+          const pair = this.internal.find(item => item.name === rec.pair);
           
           if (!pair) continue;
           const state = pair.states.find(state => state.timeframe === rec.timeframe);
 
-          if (!state) continue;
-          if (!state.action) state.action=new Action(0, rec.action, rec.time, 0, 0);
+          if (!state || !rec.action) continue;
+          if (!state.action) {
+            state.action=new Action(0, rec.action, rec.time, 0, 0);
+          }
           
           state.action!.action = rec.action;
           state.action!.time = rec.time;
@@ -48,6 +49,7 @@ export class StatesComponent implements OnInit {
           state.action!.target = Math.floor(Math.random()*300);
         }
       }
+      this.items = this.internal;
     });
   }
 }

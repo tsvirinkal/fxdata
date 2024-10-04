@@ -30,7 +30,9 @@ public class Record {
     private Long Id;
     private String pair;
     private Timeframe timeframe;
-    private ActionEnum actionEnum;
+
+    private ActionEnum action;
+
     private StateEnum state;
 
     private Double price;
@@ -45,12 +47,12 @@ public class Record {
     @JsonFormat(pattern = "HH:mm dd.MM.yyyy")
     private LocalDateTime time;
 
-    public Record(Long id, String pair, Timeframe timeframe, ActionEnum actionEnum, StateEnum state, Double price, boolean confirmation) {
+    public Record(Long id, String pair, Timeframe timeframe, ActionEnum action, StateEnum state, Double price, boolean confirmation) {
         this();
         this.Id = id;
         this.pair = pair;
         this.timeframe = timeframe;
-        this.actionEnum = actionEnum;
+        this.action = action;
         this.state = state;
         this.price = price;
         this.confirmation = confirmation;
@@ -60,7 +62,7 @@ public class Record {
         this();
         this.pair = pair;
         this.timeframe = timeframe;
-        this.actionEnum = actionEnum;
+        this.action = action;
         this.state = state;
         this.price = price;
         this.confirmation = confirmation;
@@ -91,11 +93,11 @@ public class Record {
     }
 
     public ActionEnum getAction() {
-        return actionEnum;
+        return action;
     }
 
     public void setAction(ActionEnum actionEnum) {
-        this.actionEnum = actionEnum;
+        this.action = actionEnum;
     }
 
     public StateEnum getState() {

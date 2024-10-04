@@ -33,7 +33,7 @@ public class StatesView {
                 else {
                     state = new State(pair,
                                     chState.getState().toString(),
-                                    Timeframe.H1.toString(),
+                                    tf.toString(),
                                     chState.getTime().toString());
                 }
                 states.add(state);

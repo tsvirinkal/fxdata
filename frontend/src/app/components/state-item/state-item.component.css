@@ -22,17 +22,21 @@
     border-radius: 0 !important;
   }
   .target {
-    font-size: 10pt; 
-    margin-left: -30px;
+    display: block;
+    font-size: 8pt; 
+    margin-top: -3px;
   }
   .action {
-    font-size: 16pt; 
-    float: right;
-    padding-right: 30px;
-    padding-bottom: 3px;
-    margin-top: -1px;
+    display: block;
+    font-size: 10pt; 
+    font-weight: 500;
   }
-  .state {
-    font-size: 12pt; 
-    vertical-align: text-bottom;
+  .action-box {
+    width: 50px;
+    height: 34px;
+    float: right;
+    background-color: rgb(233, 236, 239)
+  }
+  .popup {
+    font-size: 10pt; 
   }
