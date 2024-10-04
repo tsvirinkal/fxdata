@@ -35,17 +35,17 @@ public class Confirmation {
     private Timeframe timeframe;
 
     @Enumerated(EnumType.STRING)
-    private ActionEnum actionEnum;
+    private ActionEnum action;
     @Column(columnDefinition= "TIMESTAMP WITH TIME ZONE DEFAULT now()")
     @DateTimeFormat(iso= DateTimeFormat.ISO.DATE_TIME)
     @JsonFormat(pattern = "HH:mm dd.MM.yyyy")
     private LocalDateTime time;
 
-    public Confirmation(String pair, Timeframe timeframe, ActionEnum actionEnum, LocalDateTime time, long recordId) {
+    public Confirmation(String pair, Timeframe timeframe, ActionEnum action, LocalDateTime time, long recordId) {
         this.pair = pair;
         this.timeframe = timeframe;
         this.time = time;
-        this.actionEnum = actionEnum;
+        this.action = action;
         this.recordIds = new ArrayList<>() { { add(recordId); }};
     }
 
@@ -72,9 +72,9 @@ public class Confirmation {
         this.timeframe = timeframe;
     }
 
-    public ActionEnum getAction() { return actionEnum; }
+    public ActionEnum getAction() { return action; }
 
-    public void setAction(ActionEnum actionEnum) { this.actionEnum = actionEnum; }
+    public void setAction(ActionEnum action) { this.action = action; }
 
     public LocalDateTime getTime() {
         return time;

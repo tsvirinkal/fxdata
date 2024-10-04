@@ -1,9 +1,11 @@
 package com.vts.fxdata.models.dto;
 
+import com.vts.fxdata.models.ActionEnum;
+
 public class Confirmation {
     private String pair;
     private String timeframe;
-    private String action;
+    private ActionEnum action;
     private String time;
     private double price;
     long id;
@@ -25,9 +27,9 @@ public class Confirmation {
         this.timeframe = timeframe;
     }
 
-    public String getAction() { return action; }
+    public ActionEnum getAction() { return action; }
 
-    public void setAction(String action) { this.action = action; }
+    public void setAction(ActionEnum action) { this.action = action; }
 
     public String getTime() {
         return time;

@@ -30,16 +30,11 @@ public class Record {
     private Long Id;
     private String pair;
     private Timeframe timeframe;
-
     private ActionEnum action;
-
     private StateEnum state;
-
     private Double price;
-
     private boolean confirmation;
     private String confirmationDelay;
-
     private String notes;
 
     @Column(columnDefinition= "TIMESTAMP WITH TIME ZONE DEFAULT now()")
@@ -58,7 +53,7 @@ public class Record {
         this.confirmation = confirmation;
     }
 
-    public Record(String pair, Timeframe timeframe, ActionEnum actionEnum, StateEnum state, Double price, boolean confirmation) {
+    public Record(String pair, Timeframe timeframe, ActionEnum action, StateEnum state, Double price, boolean confirmation) {
         this();
         this.pair = pair;
         this.timeframe = timeframe;
