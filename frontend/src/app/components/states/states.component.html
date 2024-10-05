@@ -3,17 +3,25 @@
     <thead>
       <tr class="headers">
         <th class="p-0 w-12"></th>
-        <th class="p-0 w-12 header">H1</th>
-        <th class="p-0 w-12 header">H4</th>
-        <th class="p-0 w-12 header">D1</th>
+        <th class="p-0 w-12">H1</th>
+        <th class="p-0 w-12">H4</th>
+        <th class="p-0 w-12">D1</th>
       </tr>
     </thead>
     <tbody>
-      <tr *ngFor="let item of items">
-        <td class="p-1 column">{{ item.name }}</td>
-        <td class="column"><state-item [item]="item.states[0]"></state-item></td>
-        <td class="column"><state-item [item]="item.states[1]"></state-item></td>
-        <td class="column"><state-item [item]="item.states[2]"></state-item></td>
+      <tr *ngFor="let pair of pairs">
+        <ng-template #popContent>
+          <div class="popup">Price: {{ pair.price }}<br>Updated: {{ pair.updated}}</div>
+      </ng-template>
+      <ng-template #popTitle>
+          <div class="popup">{{ pair.name }}</div>
+      </ng-template>
+        <td class="p-1 column">
+          <div class="header" [ngbPopover]="popContent" [popoverTitle]="popTitle" triggers="mouseenter:mouseleave">{{ pair.name }}</div>
+        </td>
+        <td class="column"><state-item [item]="pair.states[0]"></state-item></td>
+        <td class="column"><state-item [item]="pair.states[1]"></state-item></td>
+        <td class="column"><state-item [item]="pair.states[2]"></state-item></td>
       </tr>
     </tbody>
   </table>

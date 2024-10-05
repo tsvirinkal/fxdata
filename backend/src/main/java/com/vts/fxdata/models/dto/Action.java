@@ -4,8 +4,12 @@ import com.vts.fxdata.models.ActionEnum;
 
 public class Action {
     private ActionEnum action;
-    private int progress;
     private int target;
+
+    public Action(ActionEnum action, int target) {
+        this.action = action;
+        this.target = target;
+    }
 
     public ActionEnum getAction() {
         return action;
@@ -13,14 +17,6 @@ public class Action {
 
     public void setAction(ActionEnum action) {
         this.action = action;
-    }
-
-    public int getProgress() {
-        return progress;
-    }
-
-    public void setProgress(int progress) {
-        this.progress = progress;
     }
 
     public int getTarget() {

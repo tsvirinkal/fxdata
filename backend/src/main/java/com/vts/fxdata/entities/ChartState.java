@@ -1,9 +1,9 @@
 package com.vts.fxdata.entities;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
-import com.vts.fxdata.models.State;
+import com.vts.fxdata.models.dto.State;
 import com.vts.fxdata.models.StateEnum;
-import com.vts.fxdata.models.Timeframe;
+import com.vts.fxdata.models.TimeframeEnum;
 import org.springframework.format.annotation.DateTimeFormat;
 
 import jakarta.persistence.*;
@@ -29,15 +29,27 @@ public class ChartState {
     )
     private Long Id;
     private String pair;
-    private Timeframe timeframe;
+    private TimeframeEnum timeframe;
     private StateEnum state;
+
+    private Double price;
+    private Double point;
+
+    @OneToOne
+    @JoinColumn(name = "recordId", referencedColumnName = "id")
+    private Record action;
+
+    @Column(columnDefinition= "TIMESTAMP WITH TIME ZONE")
+    @DateTimeFormat(iso= DateTimeFormat.ISO.DATE_TIME)
+    @JsonFormat(pattern = "HH:mm dd.MM.yyyy")
+    private LocalDateTime updated;
 
     @Column(columnDefinition= "TIMESTAMP WITH TIME ZONE DEFAULT now()")
     @DateTimeFormat(iso= DateTimeFormat.ISO.DATE_TIME)
     @JsonFormat(pattern = "HH:mm dd.MM.yyyy")
     private LocalDateTime time;
 
-    public ChartState(Long id, String pair, Timeframe timeframe, StateEnum state) {
+    public ChartState(Long id, String pair, TimeframeEnum timeframe, StateEnum state) {
         this();
         this.Id = id;
         this.pair = pair;
@@ -45,7 +57,7 @@ public class ChartState {
         this.state = state;
     }
 
-    public ChartState(String pair, Timeframe timeframe, StateEnum state) {
+    public ChartState(String pair, TimeframeEnum timeframe, StateEnum state) {
         this();
         this.pair = pair;
         this.timeframe = timeframe;
@@ -57,11 +69,12 @@ public class ChartState {
         // remove seconds and milliseconds
         nowUtc = nowUtc.truncatedTo(ChronoUnit.SECONDS);
         this.setTime(nowUtc);
+        this.price = 0.0;
     }
 
     public static ChartState newInstance(State state) {
         return new ChartState(state.getPair(),
-                Timeframe.valueOf(state.getTimeframe()),
+                TimeframeEnum.valueOf(state.getTimeframe()),
                 StateEnum.valueOf(state.getState()));
     }
 
@@ -77,11 +90,11 @@ public class ChartState {
         this.pair = pair;
     }
 
-    public Timeframe getTimeframe() {
+    public TimeframeEnum getTimeframe() {
         return timeframe;
     }
 
-    public void setTimeframe(Timeframe timeframe) {
+    public void setTimeframe(TimeframeEnum timeframe) {
         this.timeframe = timeframe;
     }
 
@@ -101,5 +114,39 @@ public class ChartState {
 
         this.time = time;
     }
+
+    public double getPrice() {
+        return price;
+    }
+
+    public void setPrice(double price) {
+        this.price = price;
+    }
+
+    public Double getPoint() {
+        return point;
+    }
+
+    public void setPoint(Double point) {
+        this.point = point;
+    }
+
+    public LocalDateTime getUpdated() {
+        return updated;
+    }
+
+    public void setUpdated(LocalDateTime updated) {
+        this.updated = updated;
+    }
+
+    public Record getAction() {
+        return this.action;
+    }
+
+    public void setAction(Record action) {
+        this.action = action;
+    }
+
+
 }
 

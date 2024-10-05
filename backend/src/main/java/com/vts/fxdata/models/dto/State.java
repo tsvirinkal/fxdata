@@ -6,12 +6,15 @@ public class State {
     private String timeframe;
     private String time;
     private Action action;
+    private Integer progress;
 
-    public State(String pair, String state, String timeframe, String time) {
+    public State(String pair, String state, String timeframe, String time, Action action, Integer progress) {
         this.pair = pair;
         this.state = state;
         this.timeframe = timeframe;
         this.time = time;
+        this.action = action;
+        this.progress = progress;
     }
 
     public String getPair() {
@@ -52,5 +55,13 @@ public class State {
 
     public void setAction(Action action) {
         this.action = action;
+    }
+
+    public Integer getProgress() {
+        return progress;
+    }
+
+    public void setProgress(Integer progress) {
+        this.progress = progress;
     }
 }

@@ -2,7 +2,7 @@ package com.vts.fxdata.entities;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.vts.fxdata.models.ActionEnum;
-import com.vts.fxdata.models.Timeframe;
+import com.vts.fxdata.models.TimeframeEnum;
 import org.springframework.format.annotation.DateTimeFormat;
 
 import jakarta.persistence.*;
@@ -32,7 +32,7 @@ public class Confirmation {
     private List<Long> recordIds;
     private String pair;
     @Enumerated(EnumType.STRING)
-    private Timeframe timeframe;
+    private TimeframeEnum timeframe;
 
     @Enumerated(EnumType.STRING)
     private ActionEnum action;
@@ -41,7 +41,7 @@ public class Confirmation {
     @JsonFormat(pattern = "HH:mm dd.MM.yyyy")
     private LocalDateTime time;
 
-    public Confirmation(String pair, Timeframe timeframe, ActionEnum action, LocalDateTime time, long recordId) {
+    public Confirmation(String pair, TimeframeEnum timeframe, ActionEnum action, LocalDateTime time, long recordId) {
         this.pair = pair;
         this.timeframe = timeframe;
         this.time = time;
@@ -64,11 +64,11 @@ public class Confirmation {
         this.pair = pair;
     }
 
-    public Timeframe getTimeframe() {
+    public TimeframeEnum getTimeframe() {
         return timeframe;
     }
 
-    public void setTimeframe(Timeframe timeframe) {
+    public void setTimeframe(TimeframeEnum timeframe) {
         this.timeframe = timeframe;
     }
 

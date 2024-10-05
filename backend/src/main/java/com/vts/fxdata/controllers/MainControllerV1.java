@@ -3,7 +3,7 @@ package com.vts.fxdata.controllers;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.vts.fxdata.entities.ChartState;
 import com.vts.fxdata.entities.Client;
-import com.vts.fxdata.models.State;
+import com.vts.fxdata.models.dto.State;
 import com.vts.fxdata.models.*;
 import com.vts.fxdata.models.dto.*;
 import com.vts.fxdata.models.dto.Record;
@@ -49,7 +49,7 @@ public class MainControllerV1 {
     @PostMapping("/addrecord")
     public void addRecord(HttpServletRequest httpRequest, @RequestBody Record request, TimeZone timezone) throws PushClientException, InterruptedException {
         var rec = new com.vts.fxdata.entities.Record(request.getPair(),
-                Timeframe.valueOf(request.getTimeframe()),
+                TimeframeEnum.valueOf(request.getTimeframe()),
                 ActionEnum.valueOf(request.getAction()),
                 StateEnum.valueOf(request.getState()),
                 request.getPrice(),
@@ -128,7 +128,7 @@ public class MainControllerV1 {
     @PostMapping("/state")
     public void setChartState(@RequestBody State state) throws PushClientException, InterruptedException {
         var chartState = new ChartState(state.getPair(),
-                Timeframe.valueOf(state.getTimeframe()),
+                TimeframeEnum.valueOf(state.getTimeframe()),
                 StateEnum.valueOf(state.getState()));
 
         if (this.stateService.setState(chartState)) {

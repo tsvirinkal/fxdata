@@ -42,15 +42,12 @@ public class StateService {
         // not modified
         return false;
     }
-//
-//    public List<DayStates> getLastStates(TimeZone timezone) {
-//        return convertToDayStatesList(this.stateRepository.getStates(), timezone);
-//    }
-//
-//    public List<DayStates> getLastStates(String pair, TimeZone timezone) {
-//        return convertToDayStatesList(this.stateRepository.getStates(pair), timezone);
-//    }
 
+    public List<ChartState> getPairStates(String pair) {
+        if (pair==null)
+            throw new IllegalArgumentException("Pair is null");
+        return this.stateRepository.getStates(pair);
+    }
     public List<Pair> getLastStates(StateEnum state) {
         List<ChartState> ret;
         if (state==null)
@@ -65,8 +62,12 @@ public class StateService {
         this.stateRepository.deleteById(id);
     }
 
-    public void saveAndFlush(ChartState record) {
-        this.stateRepository.saveAndFlush(record);
+    public void save(ChartState record) {
+        this.stateRepository.save(record);
+    }
+
+    public List<ChartState> findAll() {
+        return this.stateRepository.findAll();
     }
 
     public Optional<ChartState> getRecordById(long id) {

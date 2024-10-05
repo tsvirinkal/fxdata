@@ -1,14 +1,21 @@
 package com.vts.fxdata.models.dto;
 
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+
 public class Pair {
     private String name;
-
-    private Double price;
+    private double price;
+    private double point;
     private State[] states;
+    private String updated;
 
-    public Pair(String name, State[] states) {
+    public Pair(String name, double price, double point, LocalDateTime updated, State[] states) {
         this.name = name;
+        this.price = price;
+        this.point = point;
         this.states = states;
+        this.updated = updated.toString();
     }
 
     public String getName() {
@@ -19,12 +26,20 @@ public class Pair {
         this.name = name;
     }
 
-    public Double getPrice() {
+    public double getPrice() {
         return price;
     }
 
-    public void setPrice(Double price) {
+    public void setPrice(double price) {
         this.price = price;
+    }
+
+    public double getPoint() {
+        return point;
+    }
+
+    public void setPoint(double point) {
+        this.point = point;
     }
 
     public State[] getStates() {
@@ -33,5 +48,13 @@ public class Pair {
 
     public void setStates(State[] states) {
         this.states = states;
+    }
+
+    public String getUpdated() {
+        return updated;
+    }
+
+    public void setUpdated(String updated) {
+        this.updated = updated;
     }
 }

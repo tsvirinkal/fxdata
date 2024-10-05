@@ -5,7 +5,6 @@ import com.niamedtech.expo.exposerversdk.PushClient;
 import com.niamedtech.expo.exposerversdk.PushClientException;
 import com.vts.fxdata.entities.ChartState;
 import com.vts.fxdata.entities.Client;
-import com.vts.fxdata.models.State;
 import com.vts.fxdata.models.*;
 import com.vts.fxdata.models.dto.*;
 import com.vts.fxdata.models.dto.Record;
@@ -23,9 +22,11 @@ import org.springframework.web.bind.annotation.*;
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.TimeZone;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("api/v2/fxdata")
@@ -57,7 +58,7 @@ public class MainControllerV2 {
     public ResponseEntity<String> addRecord(@RequestBody Record request) throws PushClientException, InterruptedException {
         try {
             var rec = new com.vts.fxdata.entities.Record(request.getPair(),
-                    Timeframe.valueOf(request.getTimeframe()),
+                    TimeframeEnum.valueOf(request.getTimeframe()),
                     ActionEnum.valueOf(request.getAction()),
                     StateEnum.valueOf(request.getState()),
                     request.getPrice(),
@@ -134,12 +135,34 @@ public class MainControllerV2 {
                         .append("\n");
                 this.recordService.deleteRecord(otherId);
             }
+            notesBuilder.append("Levels: ").append(Arrays.toString(request.getLevels()));
 
             confirmedRecord.setConfirmation(true);
             confirmedRecord.setTime(LocalDateTime.now(ZoneOffset.UTC));
             confirmedRecord.setPrice(request.getPrice());
+            confirmedRecord.setStartPrice(request.getLevels()[0]);
+            confirmedRecord.setTargetPrice(request.getLevels()[1]);
             confirmedRecord.setNotes(notesBuilder.toString());
             this.recordService.save(confirmedRecord);
+
+            // update the corresponding state
+            var states = this.stateService.getPairStates(confirmedRecord.getPair());
+            final var timeframe = confirmedRecord.getTimeframe();
+            List<ChartState> tfState = states.stream().filter(st -> st.getTimeframe()==timeframe).collect(Collectors.toList());
+            if (tfState.size() > 0) {
+                var state = tfState.get(0);
+                var existingAction = state.getAction();
+                if (existingAction!=null) {
+                    if (existingAction.getAction() != confirmedRecord.getAction()) {
+                        // TODO send notification
+                        // for pairs in Range this would mean to close existing trades and reverse
+                        // for pairs in a trend we should ignore an action in the opposite direction to the trend
+                    }
+                }
+                state.setAction(confirmedRecord);
+            } else {
+                new ResponseEntity<>("Failed to link record and state.", HttpStatus.INTERNAL_SERVER_ERROR);
+            }
         } catch(Exception e) {
             errorMessage = e.getMessage()+"\r\n"+notesBuilder;
         }
@@ -166,20 +189,16 @@ public class MainControllerV2 {
     @PostMapping("/state")
     public ResponseEntity<String> setChartState(@RequestBody State state) {
         try {
-            if (this.stateService.setState(ChartState.newInstance(state))) {
-                // new state, send notification
-                String message = String.format("%s on %s %s", state.getState(), state.getPair(), state.getTimeframe());
-                pushNotifications(message, "");
-            }
+            this.stateService.setState(ChartState.newInstance(state));
         } catch (Exception e) {
             return new ResponseEntity<>(e.getMessage(), HttpStatus.BAD_REQUEST);
         }
         return new ResponseEntity<>(null, HttpStatus.OK);
     }
 
-    @GetMapping("/states/")
+    @GetMapping("/states")
     public List<Pair> getStates(@RequestParam(value = "state", required = false) StateEnum state, TimeZone timezone) {
-        return stateService.getLastStates(state);
+        return this.stateService.getLastStates(state);
     }
 
     @PostMapping("/addclient")
@@ -193,6 +212,23 @@ public class MainControllerV2 {
         } catch(DataIntegrityViolationException e) {
             System.out.println(e);
         }
+    }
+
+    @PostMapping("/heartbeat")
+    public ResponseEntity<String> addClient(@RequestBody Heartbeat request) {
+        if (request==null) {
+            return new ResponseEntity<>(null, HttpStatus.BAD_REQUEST);
+        }
+
+        for(ChartState chState : this.stateService.findAll().stream()
+                .filter(s -> s.getPair().equals(request.getPair())).toList())
+        {
+            chState.setPrice(request.getPrice());
+            chState.setUpdated(LocalDateTime.now(ZoneOffset.UTC));
+            chState.setPoint(request.getPoint());
+            this.stateService.save(chState);
+        }
+        return new ResponseEntity<>(null, HttpStatus.OK);
     }
 
     private void requestConfirmation(com.vts.fxdata.entities.Record rec) {

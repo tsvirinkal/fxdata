@@ -5,5 +5,6 @@ export interface State {
     state: string;
     time: string;
     timeframe: string;
+    progress: number;
   }
   

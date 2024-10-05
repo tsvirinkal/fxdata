@@ -5,4 +5,6 @@ export interface Pair {
     name: string;
     states: [State, State, State];
     price: number;
+    point: number;
+    updated: string;
 }

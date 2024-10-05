@@ -1,6 +1,6 @@
 package com.vts.fxdata.models;
 
-public enum Timeframe {
+public enum TimeframeEnum {
     M1,
     M5,
     M15,

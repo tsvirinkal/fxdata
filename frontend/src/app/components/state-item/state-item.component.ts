@@ -29,6 +29,6 @@ export class StateItemComponent {
   }
 
   hasAction(): boolean {
-    return this.item.action instanceof Action;
+    return this.item.action!=null;
   }
 }
