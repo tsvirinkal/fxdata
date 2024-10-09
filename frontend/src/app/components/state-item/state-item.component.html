@@ -1,9 +1,12 @@
 <ng-template #popContent>
     <div *ngIf="hasAction()" class="popup">Type: {{ this.item.action?.action }} <br>
         Created: {{ this.item.action?.time }}<br>
-        Targeting {{ this.item.action?.target }} pips.<br>
-        Price has moved {{ this.item.progress }}% to the target.</div>
-    <div *ngIf="!hasAction()" class="popup">{{ this.item.timeframe }} chart is {{ this.getReadableState() }}.</div>
+        Targeting {{ this.item.action?.targetPips }} pips.<br>
+        Entry price: {{ this.item.action?.entryPrice }}<br>
+        Start Price: {{ this.item.action?.startPrice }}<br>
+        Target Price: {{ this.item.action?.targetPrice }}<br>
+        Price has moved {{ this.item.progress }}% to the target</div>
+    <div *ngIf="!hasAction()" class="popup">{{ this.item.timeframe }} chart is {{ this.getReadableState() }}</div>
 </ng-template>
 <ng-template #popTitle>
     <div *ngIf="hasAction()" class="popup">Action Details</div>
@@ -12,7 +15,7 @@
 <div class="cell" [ngClass]="getStateClass()" [ngbPopover]="popContent" [popoverTitle]="popTitle" triggers="mouseenter:mouseleave">
     <div *ngIf="hasAction()" class="action-box text-center">
         <span class="action">{{ item.action!.action }}</span>
-        <span class="target">{{ item.action!.target }} pips</span>
+        <span class="target">{{ item.action!.targetPips }} pips</span>
     </div>
     <ngb-progressbar *ngIf="hasAction()" class="mb-3 progressbar" type="secondary" textType="light" [value]="item.progress" [showValue]="true" />
 </div>

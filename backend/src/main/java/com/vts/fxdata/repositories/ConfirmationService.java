@@ -33,7 +33,7 @@ public class ConfirmationService {
         });
     }
 
-    public void saveConfirmation(Confirmation confirmation)
+    public void save(Confirmation confirmation)
     {
         this.confirmationRepository.save(confirmation);
     }

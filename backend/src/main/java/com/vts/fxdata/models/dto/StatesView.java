@@ -49,9 +49,18 @@ public class StatesView {
                     var action = chState.getAction();
                     Action actionView = null;
                     if (action!=null) {
-                        var hundred = (int) (Math.abs(action.getStartPrice() - action.getTargetPrice())/chState.getPoint()/10);
-                        progress = (int) (Math.abs(action.getStartPrice() - chState.getPrice())/chState.getPoint()/10 * 100.0 / hundred);
-                        actionView = new Action(action.getAction(), hundred);
+                        var difference = action.getTargetPrice() - action.getStartPrice();
+                        if (action.getAction()==ActionEnum.Sell) {
+                            difference = action.getStartPrice() - action.getTargetPrice();
+                        }
+                        var targetPips = (int) (difference/chState.getPoint()/10);
+                        difference = action.getPrice() - action.getStartPrice();
+                        if (action.getAction()==ActionEnum.Sell) {
+                            difference = action.getStartPrice() - action.getPrice();
+                        }
+                        progress = (int) (difference/chState.getPoint()/10 * 100.0 / targetPips);
+                        actionView = new Action(action.getAction(), targetPips, action.getTime(),
+                                                action.getPrice(), action.getStartPrice(), action.getTargetPrice());
                     }
                     state = new State(pair, chState.getState().toString(), tf.toString(),
                                         chState.getTime().toString(), actionView, progress);

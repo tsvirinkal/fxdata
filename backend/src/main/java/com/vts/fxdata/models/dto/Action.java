@@ -1,14 +1,30 @@
 package com.vts.fxdata.models.dto;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.vts.fxdata.models.ActionEnum;
+
+import java.time.LocalDateTime;
 
 public class Action {
     private ActionEnum action;
-    private int target;
+    private int targetPips;
 
-    public Action(ActionEnum action, int target) {
+    @JsonFormat(pattern = "HH:mm dd.MM.yyyy")
+    private LocalDateTime time;
+
+    private double entryPrice;
+    private double startPrice;
+
+    private  double targetPrice;
+
+    public Action(ActionEnum action, int targetPips, LocalDateTime time, double entryPrice, double startPrice, double targetPrice) {
         this.action = action;
-        this.target = target;
+        this.targetPips = targetPips;
+        this.time = time;
+        this.entryPrice = entryPrice;
+        this.startPrice = startPrice;
+        this.targetPrice = targetPrice;
+
     }
 
     public ActionEnum getAction() {
@@ -19,11 +35,43 @@ public class Action {
         this.action = action;
     }
 
-    public int getTarget() {
-        return target;
+    public int getTargetPips() {
+        return targetPips;
     }
 
-    public void setTarget(int target) {
-        this.target = target;
+    public void setTargetPips(int target) {
+        this.targetPips = target;
+    }
+
+    public LocalDateTime getTime() {
+        return time;
+    }
+
+    public void setTime(LocalDateTime time) {
+        this.time = time;
+    }
+
+    public double getEntryPrice() {
+        return entryPrice;
+    }
+
+    public void setEntryPrice(double entryPrice) {
+        this.entryPrice = entryPrice;
+    }
+
+    public double getStartPrice() {
+        return startPrice;
+    }
+
+    public void setStartPrice(double startPrice) {
+        this.startPrice = startPrice;
+    }
+
+    public double getTargetPrice() {
+        return targetPrice;
+    }
+
+    public void setTargetPrice(double targetPrice) {
+        this.targetPrice = targetPrice;
     }
 }

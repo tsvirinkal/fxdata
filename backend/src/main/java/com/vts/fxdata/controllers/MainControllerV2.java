@@ -1,6 +1,5 @@
 package com.vts.fxdata.controllers;
 
-import com.fasterxml.jackson.databind.JsonMappingException;
 import com.niamedtech.expo.exposerversdk.PushClient;
 import com.niamedtech.expo.exposerversdk.PushClientException;
 import com.vts.fxdata.entities.ChartState;
@@ -22,10 +21,7 @@ import org.springframework.web.bind.annotation.*;
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.TimeZone;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @RestController
@@ -42,7 +38,7 @@ public class MainControllerV2 {
 
     @Autowired
     private final ClientService clientService;
-    JsonMappingException d;
+
     @Autowired
     private final HttpServletRequest request;
 
@@ -102,69 +98,39 @@ public class MainControllerV2 {
         }
 
         // mark the newest record as confirmed and delete the rest
-        var unconfirmedRecordIds = pending.get().getRecordIds();
+        var confirmation = pending.get();
+        com.vts.fxdata.entities.Record confirmedRecord = null;
+
+        var unconfirmedRecordIds = confirmation.getRecordIds();
         Collections.reverse(unconfirmedRecordIds);
         var iterator = unconfirmedRecordIds.iterator();
         String errorMessage = null;
-        var notesBuilder = new StringBuilder();
-        com.vts.fxdata.entities.Record confirmedRecord = null;
+        String notes = null;
+
         try {
             if (!iterator.hasNext()) {
                 return new ResponseEntity<>("No records found", HttpStatus.NOT_FOUND);
             }
             var recordId = iterator.next();
             confirmedRecord = this.recordService.getRecordById(recordId).get();
-
-            notesBuilder.append("Confirmed record ID: ")
-                .append(recordId)
-                .append(" created on ")
-                .append(confirmedRecord.getTime().minusMinutes(240))
-                .append("\n");
-
-            if (iterator.hasNext()) {
-                notesBuilder.append("Other records:\n");
-            }
-
-            while(iterator.hasNext()) {
-                var otherId = iterator.next();
-                var r = this.recordService.getRecordById(otherId).get();
-                notesBuilder.append("Deleted record ID: ")
-                        .append(otherId)
-                        .append(" created on ")
-                        .append(r.getTime().minusMinutes(240))
-                        .append("\n");
-                this.recordService.deleteRecord(otherId);
-            }
-            notesBuilder.append("Levels: ").append(Arrays.toString(request.getLevels()));
-
+            notes = buildNotes(confirmedRecord, request.getLevels(), iterator);
             confirmedRecord.setConfirmation(true);
             confirmedRecord.setTime(LocalDateTime.now(ZoneOffset.UTC));
             confirmedRecord.setPrice(request.getPrice());
             confirmedRecord.setStartPrice(request.getLevels()[0]);
             confirmedRecord.setTargetPrice(request.getLevels()[1]);
-            confirmedRecord.setNotes(notesBuilder.toString());
+            confirmedRecord.setNotes(notes);
             this.recordService.save(confirmedRecord);
 
+            // remove record IDs
+            confirmation.getRecordIds().clear();
+            this.confirmationService.save(confirmation);
+
             // update the corresponding state
-            var states = this.stateService.getPairStates(confirmedRecord.getPair());
-            final var timeframe = confirmedRecord.getTimeframe();
-            List<ChartState> tfState = states.stream().filter(st -> st.getTimeframe()==timeframe).collect(Collectors.toList());
-            if (tfState.size() > 0) {
-                var state = tfState.get(0);
-                var existingAction = state.getAction();
-                if (existingAction!=null) {
-                    if (existingAction.getAction() != confirmedRecord.getAction()) {
-                        // TODO send notification
-                        // for pairs in Range this would mean to close existing trades and reverse
-                        // for pairs in a trend we should ignore an action in the opposite direction to the trend
-                    }
-                }
-                state.setAction(confirmedRecord);
-            } else {
-                new ResponseEntity<>("Failed to link record and state.", HttpStatus.INTERNAL_SERVER_ERROR);
-            }
+            updateState(confirmedRecord);
+
         } catch(Exception e) {
-            errorMessage = e.getMessage()+"\r\n"+notesBuilder;
+            errorMessage = e.getMessage()+"\r\n"+notes;
         }
 
         if (errorMessage!=null) {
@@ -236,9 +202,9 @@ public class MainControllerV2 {
         if (pending.isPresent()) {
             var pendingConfirmation = pending.get();
             pendingConfirmation.setRecordId(rec.getId());
-            this.confirmationService.saveConfirmation(pendingConfirmation);
+            this.confirmationService.save(pendingConfirmation);
         } else {
-            this.confirmationService.saveConfirmation(
+            this.confirmationService.save(
                     new com.vts.fxdata.entities.Confirmation(rec.getPair(),rec.getTimeframe(),rec.getAction(),
                             rec.getTime(),rec.getId()));
             this.confirmationService.deleteOppositePending(rec);
@@ -250,6 +216,56 @@ public class MainControllerV2 {
         for (Client client:this.clientService.getClients()) {
             var token = client.getToken();
             NotificationServer.send(token, "FxData", msgLine1, msgLine2);
+        }
+    }
+
+    private String buildNotes(com.vts.fxdata.entities.Record confirmedRecord, double levels[], Iterator<Long> iterator) {
+        var notesBuilder = new StringBuilder();
+
+        notesBuilder.append("Confirmed record ID: ")
+                .append(confirmedRecord.getId())
+                .append(" created on ")
+                .append(confirmedRecord.getTime().minusMinutes(240))
+                .append("\n");
+
+        if (iterator.hasNext()) {
+            notesBuilder.append("Other records:\n");
+        }
+
+        while(iterator.hasNext()) {
+            var otherId = iterator.next();
+            var r = this.recordService.getRecordById(otherId).get();
+            notesBuilder.append("Deleted record ID: ")
+                    .append(otherId)
+                    .append(" created on ")
+                    .append(r.getTime().minusMinutes(240))
+                    .append("\n");
+            this.recordService.deleteRecord(otherId);
+        }
+        notesBuilder.append("Levels: ").append(Arrays.toString(levels));
+        return notesBuilder.toString();
+    }
+
+    private void updateState(com.vts.fxdata.entities.Record confirmedRecord) throws PushClientException {
+        var states = this.stateService.getPairStates(confirmedRecord.getPair());
+        final var timeframe = confirmedRecord.getTimeframe();
+        List<ChartState> tfState = states.stream().filter(st -> st.getTimeframe()==timeframe).collect(Collectors.toList());
+        if (tfState.size() > 0) {
+            var state = tfState.get(0);
+            var existingAction = state.getAction();
+            if (existingAction!=null) {
+                if (existingAction.getAction() != confirmedRecord.getAction()) {
+                    // TODO send notification
+                    // for pairs in Range this would mean to close existing trades and reverse
+                    // for pairs in a trend we should ignore an action in the opposite direction to the trend
+                    String message = String.format("%s %s %s", confirmedRecord.getPair(), confirmedRecord.getTimeframe(), confirmedRecord.getAction());
+                    pushNotifications(message,  String.format("is replacing %s on %s at %s", existingAction.getAction(), confirmedRecord.getTimeframe(), confirmedRecord.getTime()));
+                }
+            }
+            state.setAction(confirmedRecord);
+            this.stateService.save(state);
+        } else {
+            new ResponseEntity<>("Failed to link record and state.", HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 }

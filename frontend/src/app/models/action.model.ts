@@ -1,14 +1,20 @@
 export class Action {
     id: number;
     action: string;
-    target: number;
+    targetPips: number;
     time: string;
+    entryPrice: number;
+    startPrice: number;
+    targetPrice: number;
 
-    constructor(id: number, action: string, time: string, target: number) {
+    constructor(id: number, action: string, targetPips: number, time: string, entryPrice: number, startPrice: number, targetPrice: number) {
       this.id=id;
       this.action=action;
       this.time=time
-      this.target=target;
+      this.targetPips=targetPips;
+      this.entryPrice=entryPrice;
+      this.startPrice=startPrice;
+      this.targetPrice=targetPrice;
     }
   }
   

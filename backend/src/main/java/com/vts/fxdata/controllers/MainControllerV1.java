@@ -87,9 +87,9 @@ public class MainControllerV1 {
             if (pending.isPresent()) {
                 var pendingConfirmation = pending.get();
                 pendingConfirmation.getRecordIds().add(recordId);
-                this.confirmationService.saveConfirmation(pendingConfirmation);
+                this.confirmationService.save(pendingConfirmation);
             } else {
-                this.confirmationService.saveConfirmation(
+                this.confirmationService.save(
                         new com.vts.fxdata.entities.Confirmation(rec.getPair(),rec.getTimeframe(),rec.getAction(),
                                 rec.getTime(),rec.getId()));
             }

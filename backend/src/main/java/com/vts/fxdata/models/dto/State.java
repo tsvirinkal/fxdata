@@ -8,6 +8,9 @@ public class State {
     private Action action;
     private Integer progress;
 
+    public State() {
+    }
+
     public State(String pair, String state, String timeframe, String time, Action action, Integer progress) {
         this.pair = pair;
         this.state = state;
