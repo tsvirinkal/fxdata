@@ -4,14 +4,13 @@ import com.niamedtech.expo.exposerversdk.PushClient;
 import com.niamedtech.expo.exposerversdk.PushClientException;
 import com.vts.fxdata.entities.ChartState;
 import com.vts.fxdata.entities.Client;
+import com.vts.fxdata.entities.Record;
 import com.vts.fxdata.models.*;
 import com.vts.fxdata.models.dto.*;
-import com.vts.fxdata.models.dto.Record;
 import com.vts.fxdata.notifications.NotificationServer;
-import com.vts.fxdata.repositories.ClientService;
-import com.vts.fxdata.repositories.ConfirmationService;
-import com.vts.fxdata.repositories.RecordService;
-import com.vts.fxdata.repositories.StateService;
+import com.vts.fxdata.repositories.*;
+import com.vts.fxdata.utils.FxUtils;
+import com.vts.fxdata.utils.TimeUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
@@ -22,7 +21,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("api/v2/fxdata")
@@ -35,14 +33,17 @@ public class MainControllerV2 {
     private final StateService stateService;
     @Autowired
     private final ConfirmationService confirmationService;
-
     @Autowired
     private final ClientService clientService;
 
     @Autowired
     private final HttpServletRequest request;
 
-    public MainControllerV2(RecordService recordService, ConfirmationService confirmationService, ClientService clientService, StateService stateService, HttpServletRequest request) {
+    public MainControllerV2(RecordService recordService,
+                            ConfirmationService confirmationService,
+                            ClientService clientService,
+                            StateService stateService,
+                            HttpServletRequest request) {
         this.recordService = recordService;
         this.confirmationService = confirmationService;
         this.clientService = clientService;
@@ -51,9 +52,9 @@ public class MainControllerV2 {
     }
 
     @PostMapping("/addrecord")
-    public ResponseEntity<String> addRecord(@RequestBody Record request) throws PushClientException, InterruptedException {
+    public ResponseEntity<String> addRecord(@RequestBody com.vts.fxdata.models.dto.Record request) throws PushClientException, InterruptedException {
         try {
-            var rec = new com.vts.fxdata.entities.Record(request.getPair(),
+            var rec = new Record(request.getPair(),
                     TimeframeEnum.valueOf(request.getTimeframe()),
                     ActionEnum.valueOf(request.getAction()),
                     StateEnum.valueOf(request.getState()),
@@ -99,7 +100,7 @@ public class MainControllerV2 {
 
         // mark the newest record as confirmed and delete the rest
         var confirmation = pending.get();
-        com.vts.fxdata.entities.Record confirmedRecord = null;
+        com.vts.fxdata.entities.Record rec = null;
 
         var unconfirmedRecordIds = confirmation.getRecordIds();
         Collections.reverse(unconfirmedRecordIds);
@@ -112,22 +113,22 @@ public class MainControllerV2 {
                 return new ResponseEntity<>("No records found", HttpStatus.NOT_FOUND);
             }
             var recordId = iterator.next();
-            confirmedRecord = this.recordService.getRecordById(recordId).get();
-            notes = buildNotes(confirmedRecord, request.getLevels(), iterator);
-            confirmedRecord.setConfirmation(true);
-            confirmedRecord.setTime(LocalDateTime.now(ZoneOffset.UTC));
-            confirmedRecord.setPrice(request.getPrice());
-            confirmedRecord.setStartPrice(request.getLevels()[0]);
-            confirmedRecord.setTargetPrice(request.getLevels()[1]);
-            confirmedRecord.setNotes(notes);
-            this.recordService.save(confirmedRecord);
+            rec = this.recordService.getRecordById(recordId).get();
+            notes = buildNotes(rec, request.getLevels(), iterator);
+            rec.setConfirmation(true);
+            rec.setTime(TimeUtils.removeSeconds(LocalDateTime.now(ZoneOffset.UTC)));
+            rec.setPrice(request.getPrice());
+            rec.setStartPrice(request.getLevels()[0]);
+            rec.setTargetPrice(request.getLevels()[1]);
+            rec.setNotes(notes);
+            this.recordService.save(rec);
 
             // remove record IDs
             confirmation.getRecordIds().clear();
             this.confirmationService.save(confirmation);
 
             // update the corresponding state
-            updateState(confirmedRecord);
+            updateState(rec);
 
         } catch(Exception e) {
             errorMessage = e.getMessage()+"\r\n"+notes;
@@ -138,10 +139,10 @@ public class MainControllerV2 {
         }
 
         // send out notifications
-        String message = String.format("%s %s  (%s)", confirmedRecord.getAction(),
-                confirmedRecord.getPair(), confirmedRecord.getPrice());
-        pushNotifications(message, confirmedRecord.getTimeframe() + " " + confirmedRecord.getState() +
-                " ".repeat(24-confirmedRecord.getConfirmationDelay().length()) + confirmedRecord.getConfirmationDelay());
+        String message = String.format("%s %s  (%s)", rec.getAction(),
+                rec.getPair(), rec.getPrice());
+        pushNotifications(message, rec.getTimeframe() + " " + rec.getState() +
+                " ".repeat(24-rec.getConfirmationDelay().length()) + rec.getConfirmationDelay());
 
         this.confirmationService.deleteConfirmation(request.getId());
         return new ResponseEntity<>(null, HttpStatus.OK);
@@ -186,13 +187,8 @@ public class MainControllerV2 {
             return new ResponseEntity<>(null, HttpStatus.BAD_REQUEST);
         }
 
-        for(ChartState chState : this.stateService.findAll().stream()
-                .filter(s -> s.getPair().equals(request.getPair())).toList())
-        {
-            chState.setPrice(request.getPrice());
-            chState.setUpdated(LocalDateTime.now(ZoneOffset.UTC));
-            chState.setPoint(request.getPoint());
-            this.stateService.save(chState);
+        for(ChartState state : this.stateService.getStates(request.getPair())) {
+            updateState(state, request.getPrice(), request.getPoint());
         }
         return new ResponseEntity<>(null, HttpStatus.OK);
     }
@@ -211,12 +207,13 @@ public class MainControllerV2 {
         }
     }
 
-    private void pushNotifications(String msgLine1, String msgLine2) throws PushClientException {
+    private boolean pushNotifications(String msgLine1, String msgLine2) throws PushClientException {
         // TODO add a retry mechanism in case of a failure
         for (Client client:this.clientService.getClients()) {
             var token = client.getToken();
             NotificationServer.send(token, "FxData", msgLine1, msgLine2);
         }
+        return true;
     }
 
     private String buildNotes(com.vts.fxdata.entities.Record confirmedRecord, double levels[], Iterator<Long> iterator) {
@@ -246,26 +243,63 @@ public class MainControllerV2 {
         return notesBuilder.toString();
     }
 
-    private void updateState(com.vts.fxdata.entities.Record confirmedRecord) throws PushClientException {
-        var states = this.stateService.getPairStates(confirmedRecord.getPair());
-        final var timeframe = confirmedRecord.getTimeframe();
-        List<ChartState> tfState = states.stream().filter(st -> st.getTimeframe()==timeframe).collect(Collectors.toList());
-        if (tfState.size() > 0) {
-            var state = tfState.get(0);
-            var existingAction = state.getAction();
-            if (existingAction!=null) {
-                if (existingAction.getAction() != confirmedRecord.getAction()) {
-                    // TODO send notification
+    private void updateState(com.vts.fxdata.entities.Record newAction) throws PushClientException {
+        var state = this.stateService.getState(newAction.getPair(), newAction.getTimeframe().ordinal());
+        boolean notificationSent = false;
+        for(var stateAction : state.getActions()) {
+            if (stateAction != null) {
+                if (stateAction.getAction() == newAction.getAction()) {
+                    // we've got another action in the same direction
+                    // will use the new action, the previous ones will have no end time
+                    if (!notificationSent) {
+                        var message = String.format("Another %s %s %s", newAction.getPair(), newAction.getTimeframe(), newAction.getAction());
+                        notificationSent = pushNotifications(message, String.format("previous was at %s", stateAction.getTime()));
+                    }
+                } else {
+                    stateAction.setEndTime(TimeUtils.removeSeconds(LocalDateTime.now(ZoneOffset.UTC)));
+                    stateAction.setProfit(FxUtils.getPips(stateAction.getPrice(), newAction.getPrice(), state.getPoint()));
                     // for pairs in Range this would mean to close existing trades and reverse
                     // for pairs in a trend we should ignore an action in the opposite direction to the trend
-                    String message = String.format("%s %s %s", confirmedRecord.getPair(), confirmedRecord.getTimeframe(), confirmedRecord.getAction());
-                    pushNotifications(message,  String.format("is replacing %s on %s at %s", existingAction.getAction(), confirmedRecord.getTimeframe(), confirmedRecord.getTime()));
+                    if (!notificationSent) {
+                        var message = String.format("%s %s %s", newAction.getPair(), newAction.getTimeframe(), newAction.getAction());
+                        notificationSent = pushNotifications(message, String.format("is replacing %s on %s at %s",
+                                stateAction.getAction(), stateAction.getTimeframe(), stateAction.getTime()));
+                    }
                 }
             }
-            state.setAction(confirmedRecord);
-            this.stateService.save(state);
-        } else {
-            new ResponseEntity<>("Failed to link record and state.", HttpStatus.INTERNAL_SERVER_ERROR);
         }
+        state.addAction(newAction);
+        this.stateService.save(state);
+    }
+
+    private void updateState(ChartState state, Double currPrice, Double point) {
+        state.setPoint(point);
+        state.setPrice(currPrice);
+        state.setUpdated(TimeUtils.removeSeconds(LocalDateTime.now(ZoneOffset.UTC)));
+        for (var action : state.getActions()) {
+            if (action != null) {
+                var maxProfit = action.getProfit();
+                var maxDrawdown = action.getMaxDrawdown();
+                var actionPrice = action.getPrice();
+
+                switch (action.getAction()) {
+                    case Buy:
+                        maxProfit = FxUtils.getPips(currPrice, actionPrice, point) > maxProfit ?
+                                FxUtils.getPips(currPrice, actionPrice, point) : maxProfit;
+                        maxDrawdown = FxUtils.getPips(actionPrice, currPrice, point) > maxDrawdown ?
+                                FxUtils.getPips(actionPrice, currPrice, point) : maxDrawdown;
+                        break;
+                    case Sell:
+                        maxProfit = FxUtils.getPips(actionPrice, currPrice, point) > maxProfit ?
+                                FxUtils.getPips(actionPrice, currPrice, point) : maxProfit;
+                        maxDrawdown = FxUtils.getPips(currPrice, actionPrice, point) > maxDrawdown ?
+                                FxUtils.getPips(currPrice, actionPrice, point) : maxDrawdown;
+                        break;
+                }
+                action.setProfit(maxProfit);
+                action.setMaxDrawdown(maxDrawdown);
+            }
+        }
+        this.stateService.save(state);
     }
 }

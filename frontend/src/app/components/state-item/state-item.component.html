@@ -12,7 +12,8 @@
     <div *ngIf="hasAction()" class="popup">Action Details</div>
     <div *ngIf="!hasAction()" class="popup">Chart Details</div>
 </ng-template>
-<div class="cell" [ngClass]="getStateClass()" [ngbPopover]="popContent" [popoverTitle]="popTitle" triggers="mouseenter:mouseleave">
+<div class="cell-box" [ngbPopover]="popContent" [popoverTitle]="popTitle" triggers="mouseenter:mouseleave">
+    <div class="cell" [ngClass]="getStateClass()"></div>
     <div *ngIf="hasAction()" class="action-box text-center">
         <span class="action">{{ item.action!.action }}</span>
         <span class="target">{{ item.action!.targetPips }} pips</span>

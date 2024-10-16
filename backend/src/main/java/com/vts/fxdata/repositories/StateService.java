@@ -3,6 +3,7 @@ package com.vts.fxdata.repositories;
 import com.vts.fxdata.entities.ChartState;
 import com.vts.fxdata.models.DayStates;
 import com.vts.fxdata.models.StateEnum;
+import com.vts.fxdata.models.TimeframeEnum;
 import com.vts.fxdata.models.dto.Pair;
 import com.vts.fxdata.models.dto.StatesView;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -43,11 +44,18 @@ public class StateService {
         return false;
     }
 
-    public List<ChartState> getPairStates(String pair) {
+    public ChartState getState(String pair, int timeframe) {
+        if (pair==null)
+            throw new IllegalArgumentException("Pair is null");
+        return this.stateRepository.getState(pair, timeframe);
+    }
+
+    public List<ChartState> getStates(String pair) {
         if (pair==null)
             throw new IllegalArgumentException("Pair is null");
         return this.stateRepository.getStates(pair);
     }
+
     public List<Pair> getLastStates(StateEnum state) {
         List<ChartState> ret;
         if (state==null)

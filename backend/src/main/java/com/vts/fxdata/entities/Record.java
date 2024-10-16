@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 import com.vts.fxdata.models.ActionEnum;
 import com.vts.fxdata.models.StateEnum;
 import com.vts.fxdata.models.TimeframeEnum;
+import com.vts.fxdata.utils.TimeUtils;
 import org.springframework.format.annotation.DateTimeFormat;
 
 import jakarta.persistence.*;
@@ -54,7 +55,7 @@ public class Record {
     private ActionEnum action;
 
     /**
-     * The state of the chart at the time the star candle was found. (e.g. Range, Bullish, Bearish)
+     * The state of the chart at the time the action was confirmed. (e.g. Range, Bullish, Bearish)
      */
     private StateEnum state;
 
@@ -90,6 +91,30 @@ public class Record {
     @Column(length = NOTES_LENGTH)
     private String notes;
 
+    /**
+     * The time when the action started.
+     */
+    @DateTimeFormat(iso= DateTimeFormat.ISO.DATE_TIME)
+    @JsonFormat(pattern = "HH:mm dd.MM.yyyy")
+    private LocalDateTime startTime;
+
+    /**
+     * The time when the action ended.
+     */
+    @DateTimeFormat(iso= DateTimeFormat.ISO.DATE_TIME)
+    @JsonFormat(pattern = "HH:mm dd.MM.yyyy")
+    private LocalDateTime endTime;
+
+    /**
+     * The profit this action brought in.
+     */
+    private Integer profit;
+
+    /**
+     * The maximum loss the account balance had to endure during this action.
+     */
+    private Integer maxDrawdown;
+
      public Record(Long id, String pair, TimeframeEnum timeframe, ActionEnum action, StateEnum state, Double price, boolean confirmation) {
         this();
         this.Id = id;
@@ -112,7 +137,9 @@ public class Record {
     }
 
     public Record() {
-        this.setTime(LocalDateTime.now(ZoneOffset.UTC));
+        this.setTime(TimeUtils.removeSeconds(LocalDateTime.now(ZoneOffset.UTC)));
+        this.profit = 0;
+        this.maxDrawdown = 0;
     }
 
     public Long getId() {
@@ -156,9 +183,7 @@ public class Record {
     }
 
     public void setTime(LocalDateTime time) {
-        // remove seconds and milliseconds
-        time = time.truncatedTo(ChronoUnit.SECONDS);
-        this.time = time;
+        this.time = TimeUtils.removeSeconds(time);
     }
 
     public Double getPrice() {
@@ -191,7 +216,8 @@ public class Record {
     public void setConfirmation(boolean confirmation) {
         this.confirmation = confirmation;
         if (confirmation) {
-            this.confirmationDelay = formatDuration(this.time, LocalDateTime.now(ZoneOffset.UTC));
+            setStartTime(TimeUtils.removeSeconds(LocalDateTime.now(ZoneOffset.UTC)));
+            this.confirmationDelay = TimeUtils.formatDuration(this.time, this.startTime, false);
         }
     }
 
@@ -211,23 +237,36 @@ public class Record {
         }
     }
 
-    private static String formatDuration(LocalDateTime start, LocalDateTime end) {
-        Duration duration = Duration.between(start, end);
-        long totalSeconds = duration.getSeconds();
+    public LocalDateTime getStartTime() {
+        return startTime;
+    }
 
-        // Extract the hours, minutes, and seconds
-        long days = totalSeconds / 86400;
-        long hours = totalSeconds / 3600;
-        long minutes = (totalSeconds % 3600) / 60;
-        String ret = "";
-        if (days>0) {
-            ret += String.format("%02dd ", days);
-        }
-        if (hours>0) {
-            ret += String.format("%02dh ", hours);
-        }
-        ret += String.format("%02dm", minutes);
-        return ret;
+    public void setStartTime(LocalDateTime startTime) {
+        this.startTime = startTime;
+    }
+
+    public LocalDateTime getEndTime() {
+        return endTime;
+    }
+
+    public void setEndTime(LocalDateTime endTime) {
+        this.endTime = endTime;
+    }
+
+    public Integer getProfit() {
+        return profit;
+    }
+
+    public void setProfit(Integer profit) {
+        this.profit = profit;
+    }
+
+    public Integer getMaxDrawdown() {
+        return maxDrawdown;
+    }
+
+    public void setMaxDrawdown(Integer maxDrawdown) {
+        this.maxDrawdown = maxDrawdown;
     }
 }
 

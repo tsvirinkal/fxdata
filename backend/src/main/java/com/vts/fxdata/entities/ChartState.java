@@ -4,12 +4,14 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 import com.vts.fxdata.models.dto.State;
 import com.vts.fxdata.models.StateEnum;
 import com.vts.fxdata.models.TimeframeEnum;
+import com.vts.fxdata.utils.TimeUtils;
 import org.springframework.format.annotation.DateTimeFormat;
 
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
-import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "states",
@@ -31,13 +33,13 @@ public class ChartState {
     private String pair;
     private TimeframeEnum timeframe;
     private StateEnum state;
-
     private Double price;
     private Double point;
 
-    @OneToOne
+    @OneToMany(cascade = CascadeType.ALL)
     @JoinColumn(name = "recordId", referencedColumnName = "id")
-    private Record action;
+
+    private List<Record> actions;
 
     @Column(columnDefinition= "TIMESTAMP WITH TIME ZONE")
     @DateTimeFormat(iso= DateTimeFormat.ISO.DATE_TIME)
@@ -65,11 +67,9 @@ public class ChartState {
     }
 
     public ChartState() {
-        var nowUtc = LocalDateTime.now(ZoneOffset.UTC);
-        // remove seconds and milliseconds
-        nowUtc = nowUtc.truncatedTo(ChronoUnit.SECONDS);
-        this.setTime(nowUtc);
+        this.setTime(TimeUtils.removeSeconds(LocalDateTime.now(ZoneOffset.UTC)));
         this.price = 0.0;
+        this.actions = new ArrayList<>();
     }
 
     public static ChartState newInstance(State state) {
@@ -139,14 +139,16 @@ public class ChartState {
         this.updated = updated;
     }
 
-    public Record getAction() {
-        return this.action;
+    public List<Record> getActions() {
+        return this.actions;
     }
 
-    public void setAction(Record action) {
-        this.action = action;
+    public void setActions(List<Record> states) {
+        this.actions = states;
     }
 
-
+    public void addAction(Record action) {
+        this.actions.add(action);
+    }
 }
 

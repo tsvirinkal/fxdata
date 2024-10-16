@@ -1,9 +1,9 @@
 package com.vts.fxdata.models.dto;
 
 import com.vts.fxdata.entities.ChartState;
-import com.vts.fxdata.entities.Record;
 import com.vts.fxdata.models.ActionEnum;
 import com.vts.fxdata.models.TimeframeEnum;
+import com.vts.fxdata.utils.TimeUtils;
 
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
@@ -29,8 +29,8 @@ public class StatesView {
             var chStates = pairStates.get(pair);
             var states = new ArrayList<State>();
             State state;
-            double price =0, point=0;
-            LocalDateTime updated = LocalDateTime.now(ZoneOffset.UTC);
+            double price = 0, point = 0;
+            String updated = null;
             for (var tf : timeframes){
                 ChartState chState = chStates.get(tf);
 
@@ -39,24 +39,27 @@ public class StatesView {
                 }
                 else {
                     try {
-                        updated = chState.getUpdated();
                         price = chState.getPrice();
                         point = chState.getPoint();
+                        updated = TimeUtils.formatDuration(chState.getUpdated(), LocalDateTime.now(ZoneOffset.UTC), true) + " ago";
                     } catch(NullPointerException e) {
                     }
 
                     var progress = 0;
-                    var action = chState.getAction();
+                    var actionList = chState.getActions();
                     Action actionView = null;
-                    if (action!=null) {
+                    if (!actionList.isEmpty()) {
+                        // display the last action
+                        var action = actionList.get(actionList.size()-1);
                         var difference = action.getTargetPrice() - action.getStartPrice();
                         if (action.getAction()==ActionEnum.Sell) {
                             difference = action.getStartPrice() - action.getTargetPrice();
                         }
                         var targetPips = (int) (difference/chState.getPoint()/10);
-                        difference = action.getPrice() - action.getStartPrice();
+                        var currentPrice = price>0 ? price:action.getPrice();
+                        difference = currentPrice - action.getStartPrice();
                         if (action.getAction()==ActionEnum.Sell) {
-                            difference = action.getStartPrice() - action.getPrice();
+                            difference = action.getStartPrice() - currentPrice;
                         }
                         progress = (int) (difference/chState.getPoint()/10 * 100.0 / targetPips);
                         actionView = new Action(action.getAction(), targetPips, action.getTime(),

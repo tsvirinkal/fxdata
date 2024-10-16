@@ -17,7 +17,9 @@
           <div class="popup">{{ pair.name }}</div>
       </ng-template>
         <td class="p-1 column">
-          <div class="header" [ngbPopover]="popContent" [popoverTitle]="popTitle" triggers="mouseenter:mouseleave">{{ pair.name }}</div>
+          <div class="header" [ngbPopover]="popContent" [popoverTitle]="popTitle" triggers="mouseenter:mouseleave">{{ pair.name }}<br>
+          <div class="quote">{{ pair.price }}</div>
+          </div>
         </td>
         <td class="column"><state-item [item]="pair.states[0]"></state-item></td>
         <td class="column"><state-item [item]="pair.states[1]"></state-item></td>

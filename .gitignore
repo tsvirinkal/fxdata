@@ -9,6 +9,7 @@ backend/*.ipr
 backend/.mvn
 backend/HELP.md
 backend/target/
+backend/logs/
 
 ### VS Code ###
 frontend/.vscode/
