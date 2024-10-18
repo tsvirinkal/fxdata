@@ -116,11 +116,24 @@ public class MainControllerV2 {
             rec = this.recordService.getRecordById(recordId).get();
             notes = buildNotes(rec, request.getLevels(), iterator);
             rec.setConfirmation(true);
-            rec.setTime(TimeUtils.removeSeconds(LocalDateTime.now(ZoneOffset.UTC)));
             rec.setPrice(request.getPrice());
             rec.setStartPrice(request.getLevels()[0]);
             rec.setTargetPrice(request.getLevels()[1]);
             rec.setNotes(notes);
+
+            var targetPips = FxUtils.getPips(rec.getTargetPrice(),rec.getStartPrice(),request.getPoint());
+            if (rec.getAction()==ActionEnum.Sell) {
+                targetPips = FxUtils.getPips(rec.getStartPrice(),rec.getTargetPrice(),request.getPoint());
+            }
+            rec.setTargetPips(targetPips);
+
+            var progress = FxUtils.getProgress(request.getPrice(), rec.getStartPrice(), request.getPoint(), targetPips);
+            if (rec.getAction()==ActionEnum.Sell) {
+                progress = FxUtils.getProgress(rec.getStartPrice(), request.getPrice(), request.getPoint(), targetPips);
+            }
+            rec.setProgress(progress);
+            rec.setMinProgress(progress);
+            rec.setMaxProgress(progress);
             this.recordService.save(rec);
 
             // remove record IDs
@@ -128,7 +141,7 @@ public class MainControllerV2 {
             this.confirmationService.save(confirmation);
 
             // update the corresponding state
-            updateState(rec);
+            updateStateWithNewAction(rec, request.getPoint());
 
         } catch(Exception e) {
             errorMessage = e.getMessage()+"\r\n"+notes;
@@ -188,7 +201,7 @@ public class MainControllerV2 {
         }
 
         for(ChartState state : this.stateService.getStates(request.getPair())) {
-            updateState(state, request.getPrice(), request.getPoint());
+            updateStateMetrics(state, request.getPrice());
         }
         return new ResponseEntity<>(null, HttpStatus.OK);
     }
@@ -243,62 +256,77 @@ public class MainControllerV2 {
         return notesBuilder.toString();
     }
 
-    private void updateState(com.vts.fxdata.entities.Record newAction) throws PushClientException {
+    private void updateStateWithNewAction(com.vts.fxdata.entities.Record newAction, double point) throws PushClientException {
         var state = this.stateService.getState(newAction.getPair(), newAction.getTimeframe().ordinal());
+        if (state==null) {
+            state = new ChartState(newAction.getPair(),newAction.getTimeframe(), newAction.getState());
+            state.setTime(newAction.getTime());
+            state.setPrice(newAction.getPrice());
+        }
         boolean notificationSent = false;
+
         for(var stateAction : state.getActions()) {
-            if (stateAction != null) {
-                if (stateAction.getAction() == newAction.getAction()) {
-                    // we've got another action in the same direction
-                    // will use the new action, the previous ones will have no end time
-                    if (!notificationSent) {
-                        var message = String.format("Another %s %s %s", newAction.getPair(), newAction.getTimeframe(), newAction.getAction());
-                        notificationSent = pushNotifications(message, String.format("previous was at %s", stateAction.getTime()));
-                    }
-                } else {
-                    stateAction.setEndTime(TimeUtils.removeSeconds(LocalDateTime.now(ZoneOffset.UTC)));
-                    stateAction.setProfit(FxUtils.getPips(stateAction.getPrice(), newAction.getPrice(), state.getPoint()));
-                    // for pairs in Range this would mean to close existing trades and reverse
-                    // for pairs in a trend we should ignore an action in the opposite direction to the trend
-                    if (!notificationSent) {
-                        var message = String.format("%s %s %s", newAction.getPair(), newAction.getTimeframe(), newAction.getAction());
-                        notificationSent = pushNotifications(message, String.format("is replacing %s on %s at %s",
-                                stateAction.getAction(), stateAction.getTimeframe(), stateAction.getTime()));
-                    }
+            if (stateAction.getAction() == newAction.getAction()) {
+                // we've got another action in the same direction
+                // will use the new action, the previous ones will have no end time
+                if (!notificationSent) {
+                    var message = String.format("Another %s %s %s", newAction.getPair(), newAction.getTimeframe(), newAction.getAction());
+                    notificationSent = pushNotifications(message, String.format("previous was (%s) at %s", stateAction.getPrice(), stateAction.getTime()));
+                }
+            } else {
+                stateAction.setEndTime(TimeUtils.removeSeconds(LocalDateTime.now(ZoneOffset.UTC)));
+                stateAction.setProfit(FxUtils.getPips(stateAction.getPrice(), newAction.getPrice(), state.getPoint()));
+                // for pairs in Range this would mean to close existing trades and reverse
+                // for pairs in a trend we should ignore an action in the opposite direction to the trend
+                if (!notificationSent) {
+                    var message = String.format("%s %s %s", newAction.getPair(), newAction.getTimeframe(), newAction.getAction());
+                    notificationSent = pushNotifications(message, String.format("is replacing %s on %s at %s",
+                            stateAction.getAction(), stateAction.getTimeframe(), stateAction.getTime()));
                 }
             }
         }
         state.addAction(newAction);
+        state.setPoint(point);
         this.stateService.save(state);
     }
 
-    private void updateState(ChartState state, Double currPrice, Double point) {
-        state.setPoint(point);
+    private void updateStateMetrics(ChartState state, Double currPrice) {
         state.setPrice(currPrice);
         state.setUpdated(TimeUtils.removeSeconds(LocalDateTime.now(ZoneOffset.UTC)));
+        var point = state.getPoint();
         for (var action : state.getActions()) {
-            if (action != null) {
-                var maxProfit = action.getProfit();
-                var maxDrawdown = action.getMaxDrawdown();
-                var actionPrice = action.getPrice();
+            int profit = 0;
+            var progress = 0;
+            var targetPips = action.getTargetPips();;
+            var maxDrawdown = action.getMaxDrawdown();
+            var minProgress = action.getMinProgress();
+            var maxProgress = action.getMaxProgress();
+            var actionPrice = action.getPrice();
 
-                switch (action.getAction()) {
-                    case Buy:
-                        maxProfit = FxUtils.getPips(currPrice, actionPrice, point) > maxProfit ?
-                                FxUtils.getPips(currPrice, actionPrice, point) : maxProfit;
-                        maxDrawdown = FxUtils.getPips(actionPrice, currPrice, point) > maxDrawdown ?
-                                FxUtils.getPips(actionPrice, currPrice, point) : maxDrawdown;
-                        break;
-                    case Sell:
-                        maxProfit = FxUtils.getPips(actionPrice, currPrice, point) > maxProfit ?
-                                FxUtils.getPips(actionPrice, currPrice, point) : maxProfit;
-                        maxDrawdown = FxUtils.getPips(currPrice, actionPrice, point) > maxDrawdown ?
-                                FxUtils.getPips(currPrice, actionPrice, point) : maxDrawdown;
-                        break;
-                }
-                action.setProfit(maxProfit);
-                action.setMaxDrawdown(maxDrawdown);
+            switch (action.getAction()) {
+                case Buy:
+                    profit = FxUtils.getPips(currPrice, actionPrice, point);
+                    maxDrawdown = Math.max(-profit, maxDrawdown);
+                    progress = FxUtils.getProgress(currPrice, action.getStartPrice(), point, action.getTargetPips());
+                    targetPips = FxUtils.getPips(action.getTargetPrice(),action.getStartPrice(),point); // TODO remove
+                    break;
+                case Sell:
+                    profit = FxUtils.getPips(actionPrice, currPrice, point);
+                    maxDrawdown = Math.max(-profit, maxDrawdown);
+                    progress = FxUtils.getProgress(action.getStartPrice(), currPrice, point, action.getTargetPips());
+                    targetPips = FxUtils.getPips(action.getStartPrice(),action.getTargetPrice(),point); // TODO remove
+                    break;
             }
+            if (progress<minProgress) {
+                action.setMinProgress(progress);
+            }
+            if (progress>maxProgress) {
+                action.setMaxProgress(progress);
+            }
+            action.setProgress(progress);
+            action.setTargetPips(targetPips); // TODO remove, added temporarily to fix old records
+            action.setProfit(profit);
+            action.setMaxDrawdown(maxDrawdown);
         }
         this.stateService.save(state);
     }
