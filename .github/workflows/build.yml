@@ -23,24 +23,28 @@ jobs:
 
       # Step 3: Install dependencies
       - name: Install dependencies
-        run: npm ci
+        run:
+          cd frontend
+          npm ci
 
       # Step 4: Build the Angular app
       - name: Build Angular app
-        run: npm run build -- --configuration=production
+        run:
+          cd frontend
+          npm run build -- --configuration=production
 
       # Optional Step 5: Upload the built files as an artifact
       - name: Upload build artifacts
         uses: actions/upload-artifact@v3
         with:
           name: build-artifacts
-          path: dist/ # Adjust the path if your build output folder is different
+          path: frontend/dist/
 
       # Optional Step 6: Cache node_modules for faster builds (especially for larger projects)
       - name: Cache node_modules
         uses: actions/cache@v3
         with:
-          path: node_modules
+          path: cd frontend/node_modules
           key: ${{ runner.os }}-node_modules-${{ hashFiles('package-lock.json') }}
           restore-keys: |
             ${{ runner.os }}-node_modules
