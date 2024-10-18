@@ -1,7 +1,6 @@
 package com.vts.fxdata.models.dto;
 
 import com.vts.fxdata.entities.ChartState;
-import com.vts.fxdata.models.ActionEnum;
 import com.vts.fxdata.models.TimeframeEnum;
 import com.vts.fxdata.utils.TimeUtils;
 
@@ -45,24 +44,14 @@ public class StatesView {
                     } catch(NullPointerException e) {
                     }
 
-                    var progress = 0;
                     var actionList = chState.getActions();
                     Action actionView = null;
+                    var progress = 0;
                     if (!actionList.isEmpty()) {
                         // display the last action
                         var action = actionList.get(actionList.size()-1);
-                        var difference = action.getTargetPrice() - action.getStartPrice();
-                        if (action.getAction()==ActionEnum.Sell) {
-                            difference = action.getStartPrice() - action.getTargetPrice();
-                        }
-                        var targetPips = (int) (difference/chState.getPoint()/10);
-                        var currentPrice = price>0 ? price:action.getPrice();
-                        difference = currentPrice - action.getStartPrice();
-                        if (action.getAction()==ActionEnum.Sell) {
-                            difference = action.getStartPrice() - currentPrice;
-                        }
-                        progress = (int) (difference/chState.getPoint()/10 * 100.0 / targetPips);
-                        actionView = new Action(action.getAction(), targetPips, action.getTime(),
+                        progress = action.getProgress();
+                        actionView = new Action(action.getAction(), action.getTargetPips(), action.getTime(),
                                                 action.getPrice(), action.getStartPrice(), action.getTargetPrice());
                     }
                     state = new State(pair, chState.getState().toString(), tf.toString(),

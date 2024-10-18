@@ -10,7 +10,6 @@ import org.springframework.format.annotation.DateTimeFormat;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 import java.time.*;
-import java.time.temporal.ChronoUnit;
 
 @Entity
 @Table(name = "stars",
@@ -60,7 +59,8 @@ public class Record {
     private StateEnum state;
 
     /**
-     * The bid price at the time when the star candle was found.
+     * The bid price at the time when the star candle was found for unconfirmed records or
+     * the big price at the time when the action was confirmed.
      */
     private Double price;
 
@@ -115,7 +115,27 @@ public class Record {
      */
     private Integer maxDrawdown;
 
-     public Record(Long id, String pair, TimeframeEnum timeframe, ActionEnum action, StateEnum state, Double price, boolean confirmation) {
+    /**
+     * The current progress of the action showing the percentage of way the current price has moved from startPrice to targetPrice.
+     */
+    private Integer progress;
+
+    /**
+     * The maximum negative progress achieved until completion.
+     */
+    private Integer minProgress;
+
+    /**
+     * The maximum progress achieved until completion.
+     */
+    private Integer maxProgress;
+
+    /**
+     * The targeted pip value for this action.
+     */
+    private Integer targetPips;
+
+    public Record(Long id, String pair, TimeframeEnum timeframe, ActionEnum action, StateEnum state, Double price, boolean confirmation) {
         this();
         this.Id = id;
         this.pair = pair;
@@ -140,6 +160,10 @@ public class Record {
         this.setTime(TimeUtils.removeSeconds(LocalDateTime.now(ZoneOffset.UTC)));
         this.profit = 0;
         this.maxDrawdown = 0;
+        this.progress = 0;
+        this.maxProgress = 0;
+        this.minProgress = 0;
+        this.targetPips = 0;
     }
 
     public Long getId() {
@@ -254,7 +278,7 @@ public class Record {
     }
 
     public Integer getProfit() {
-        return profit;
+        return profit==null ? 0 : profit;
     }
 
     public void setProfit(Integer profit) {
@@ -262,11 +286,43 @@ public class Record {
     }
 
     public Integer getMaxDrawdown() {
-        return maxDrawdown;
+        return maxDrawdown==null ? 0 : maxDrawdown;
     }
 
     public void setMaxDrawdown(Integer maxDrawdown) {
         this.maxDrawdown = maxDrawdown;
+    }
+
+    public Integer getProgress() {
+        return progress==null ? 0 : progress;
+    }
+
+    public void setProgress(Integer progress) {
+        this.progress = progress;
+    }
+
+    public Integer getMinProgress() {
+        return minProgress==null ? 0 : minProgress;
+    }
+
+    public void setMinProgress(Integer minProgress) {
+        this.minProgress = minProgress;
+    }
+
+    public Integer getMaxProgress() {
+        return maxProgress==null ? 0 : maxProgress;
+    }
+
+    public void setMaxProgress(Integer maxProgress) {
+        this.maxProgress = maxProgress;
+    }
+
+    public Integer getTargetPips() {
+        return targetPips==null ? 0 : targetPips;
+    }
+
+    public void setTargetPips(Integer targetPips) {
+        this.targetPips = targetPips;
     }
 }
 

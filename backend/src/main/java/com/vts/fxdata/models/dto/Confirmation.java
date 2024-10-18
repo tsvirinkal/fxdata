@@ -4,6 +4,7 @@ public class Confirmation {
     private long id;
     private double price;
     private double[] levels;
+    private double point;
 
     public long getId() { return id; }
 
@@ -19,5 +20,13 @@ public class Confirmation {
 
     public void setLevels(double[] levels) {
         this.levels = levels;
+    }
+
+    public double getPoint() {
+        return point;
+    }
+
+    public void setPoint(double point) {
+        this.point = point;
     }
 }
