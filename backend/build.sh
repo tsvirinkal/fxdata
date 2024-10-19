@@ -7,7 +7,7 @@ if [ -z "$1" ]; then
 fi
 
 VERSION_TAG=$1
-APP_NAME="fxdata-api"
+APP_NAME="fxdata"
 AUTHOR="tsvirinkal"
 SEPARATOR="##############################################################################"
 cd ../frontend

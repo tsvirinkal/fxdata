@@ -1,0 +1,13 @@
+.container {
+    width: 100%;
+    min-width: 800px;
+}
+.headers {
+    height: 2em;
+    vertical-align: middle;
+    border: 1px solid #b1b1b1;
+}
+.column {
+    border: 1px solid #b1b1b1;
+    padding: 5px;
+}

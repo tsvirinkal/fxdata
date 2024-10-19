@@ -2,6 +2,7 @@ package com.vts.fxdata.repositories;
 
 import com.vts.fxdata.entities.Record;
 import com.vts.fxdata.models.dto.DayRecords;
+import com.vts.fxdata.models.dto.Result;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -39,6 +40,10 @@ public class RecordService {
 
     public List<DayRecords> getConfirmedRecords(String pair, int tzOffset) {
         return convertToDayRecordsList(this.recordRepository.getConfirmedRecordsByPair(pair), tzOffset);
+    }
+
+    public List<Record> getResultRecords() {
+        return this.recordRepository.getResultRecords();
     }
 
     @Transactional

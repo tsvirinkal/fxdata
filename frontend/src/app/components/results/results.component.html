@@ -1,0 +1,28 @@
+<table class="table table-striped text-center container">
+    <thead>
+      <tr class="headers">
+        <th class="p-0 w-12">Pair</th>
+        <th class="p-0 w-12">Action</th>
+        <th class="p-0 w-12">Target Pips</th>
+        <th class="p-0 w-12">Profit Pips</th>
+        <th class="p-0 w-12">Start Time</th>
+        <th class="p-0 w-12">End Time</th>
+        <th class="p-0 w-12">Max Drawdown Pips</th>
+        <th class="p-0 w-12">Min Progress</th>
+        <th class="p-0 w-12">Max Progress</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let res of results">
+        <td class="column">{{ res.pair }},{{ res.timeframe }}</td>
+        <td class="column">{{ res.action }}</td>
+        <td class="column">{{ res.targetPips }}</td>
+        <td class="column">{{ res.profit }}</td>
+        <td class="column">{{ res.startTime }}</td>
+        <td class="column">{{ res.endTime }}</td>
+        <td class="column">{{ res.maxDrawdown }}</td>
+        <td class="column">{{ res.minProgress }}</td>
+        <td class="column">{{ res.maxProgress }}</td>
+      </tr>
+    </tbody>
+  </table>

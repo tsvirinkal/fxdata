@@ -11,6 +11,12 @@
 			<list-group></list-group>
 		</ng-template>
 	</li>
+	<li [ngbNavItem]="3">
+		<button ngbNavLink>Results</button>
+		<ng-template ngbNavContent>
+			<results></results>
+		</ng-template>
+	</li>
 </ul>
 
 <div [ngbNavOutlet]="nav" class="mt-2"></div>

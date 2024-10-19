@@ -201,9 +201,28 @@ public class MainControllerV2 {
         }
 
         for(ChartState state : this.stateService.getStates(request.getPair())) {
-            updateStateMetrics(state, request.getPrice());
+            updateStateMetrics(state, request);
         }
         return new ResponseEntity<>(null, HttpStatus.OK);
+    }
+
+    @GetMapping("/results")
+    public List<Result> getResults(TimeZone timezone) {
+        var results = new ArrayList<Result>();
+        for(var r : this.recordService.getResultRecords()) {
+            results.add(new Result(
+                    r.getPair(),
+                    r.getTimeframe().toString(),
+                    r.getAction().toString(),
+                    r.getTargetPips(),
+                    r.getProfit(),
+                    r.getMaxDrawdown(),
+                    r.getMinProgress(),
+                    r.getMaxProgress(),
+                    r.getStartTime().toString(),
+                    r.getEndTime().toString()));
+        }
+        return results;
     }
 
     private void requestConfirmation(com.vts.fxdata.entities.Record rec) {
@@ -290,10 +309,13 @@ public class MainControllerV2 {
         this.stateService.save(state);
     }
 
-    private void updateStateMetrics(ChartState state, Double currPrice) {
+    private void updateStateMetrics(ChartState state, Heartbeat data) {
+        var currPrice = data.getPrice();
+        var point = data.getPoint();
         state.setPrice(currPrice);
+        state.setPoint(point); // TODO remove, added temporarily to fix old records
         state.setUpdated(TimeUtils.removeSeconds(LocalDateTime.now(ZoneOffset.UTC)));
-        var point = state.getPoint();
+
         for (var action : state.getActions()) {
             int profit = 0;
             var progress = 0;
