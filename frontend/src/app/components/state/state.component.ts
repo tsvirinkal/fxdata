@@ -7,13 +7,13 @@ import { NgbPopoverModule } from '@ng-bootstrap/ng-bootstrap';
 
 
 @Component({
-  selector: 'state-item',
+  selector: 'state',
   standalone: true,
   imports: [NgbProgressbarModule, NgbPopoverModule, NgClass, NgIf],
-  templateUrl: './state-item.component.html',
-  styleUrl: './state-item.component.css'
+  templateUrl: './state.component.html',
+  styleUrl: './state.component.css'
 })
-export class StateItemComponent {
+export class StateComponent {
   @Input() item!: State;
   readableState!: string;
 

@@ -21,9 +21,9 @@
           <div class="quote">{{ pair.price }}</div>
           </div>
         </td>
-        <td class="column"><state-item [item]="pair.states[0]"></state-item></td>
-        <td class="column"><state-item [item]="pair.states[1]"></state-item></td>
-        <td class="column"><state-item [item]="pair.states[2]"></state-item></td>
+        <td class="column"><state [item]="pair.states[0]"></state></td>
+        <td class="column"><state [item]="pair.states[1]"></state></td>
+        <td class="column"><state [item]="pair.states[2]"></state></td>
       </tr>
     </tbody>
   </table>

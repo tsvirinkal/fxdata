@@ -2,16 +2,16 @@ import { CommonModule } from '@angular/common';
 import { Component, OnInit } from '@angular/core';
 import { DataService } from '../../services/data.service';
 import { Day } from '../../models/day.model';
-import { ListItemComponent } from '../list-item/list-item.component';
+import { ActionComponent } from '../action/action.component';
 
 @Component({
-  selector: 'list-group',
+  selector: 'actions',
   standalone: true,
-  imports: [CommonModule, ListItemComponent],
-  templateUrl: './list-group.component.html',
-  styleUrls: ['./list-group.component.css']
+  imports: [CommonModule, ActionComponent],
+  templateUrl: './actions.component.html',
+  styleUrls: ['./actions.component.css']
 })
-export class ListGroupComponent implements OnInit {
+export class ActionsComponent implements OnInit {
 
   items: Day[] = [];
 

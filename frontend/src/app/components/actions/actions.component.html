@@ -4,7 +4,7 @@
       <span class="fw-bold text-center">{{ item.date }}</span>
       <ul>
         <li *ngFor="let record of item.records" class="list-group-item text-color">
-          <list-item [item]="record"></list-item>
+          <action [item]="record"></action>
         </li>
       </ul>
     </li>

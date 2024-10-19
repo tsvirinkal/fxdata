@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { NgbPopoverModule } from '@ng-bootstrap/ng-bootstrap';
-import { StateItemComponent } from '../state-item/state-item.component';
+import { StateComponent } from '../state/state.component';
 import { mergeMap, switchMap } from 'rxjs/operators';
 import { Pair } from '../../models/pair.model';
 import { DataService } from '../../services/data.service';
@@ -11,7 +11,7 @@ import { interval, Subscription } from 'rxjs';
 @Component({
   selector: 'state',
   standalone: true,
-  imports: [CommonModule, NgbPopoverModule, StateItemComponent],
+  imports: [CommonModule, NgbPopoverModule, StateComponent],
   templateUrl: './states.component.html',
   styleUrl: './states.component.css'
 })

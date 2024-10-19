@@ -3,13 +3,13 @@ import { Record } from '../../models/record.model';
 import { NgIf, NgFor } from '@angular/common';
 
 @Component({
-  selector: 'list-item',
+  selector: 'action',
   standalone: true,
   imports: [NgIf, NgFor],
-  templateUrl: './list-item.component.html',
-  styleUrl: './list-item.component.css'
+  templateUrl: './action.component.html',
+  styleUrl: './action.component.css'
 })
-export class ListItemComponent implements OnChanges {
+export class ActionComponent implements OnChanges {
   @Input() item!: Record;
   notes: string[] = [];
 
