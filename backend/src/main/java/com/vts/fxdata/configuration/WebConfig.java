@@ -17,6 +17,8 @@ import java.util.List;
 @Configuration
 @ComponentScan({ "com.vts.fxdata" })
 public class WebConfig implements WebMvcConfigurer {
+    public static final String DATE_TIME_PATTERN = "HH:mm dd.MM.yyyy";
+    public static final String DATE_PATTERN = "dd.MM.yyyy";
 
     @Override
     public void configureMessageConverters(List<HttpMessageConverter<?>> converters) {

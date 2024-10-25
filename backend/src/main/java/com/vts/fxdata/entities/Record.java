@@ -1,6 +1,7 @@
 package com.vts.fxdata.entities;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.vts.fxdata.configuration.WebConfig;
 import com.vts.fxdata.models.ActionEnum;
 import com.vts.fxdata.models.StateEnum;
 import com.vts.fxdata.models.TimeframeEnum;
@@ -45,7 +46,7 @@ public class Record {
      */
     @Column(columnDefinition= "TIMESTAMP WITH TIME ZONE DEFAULT now()")
     @DateTimeFormat(iso= DateTimeFormat.ISO.DATE_TIME)
-    @JsonFormat(pattern = "HH:mm dd.MM.yyyy")
+    @JsonFormat(pattern = WebConfig.DATE_TIME_PATTERN)
     private LocalDateTime time;
 
     /**
@@ -95,14 +96,14 @@ public class Record {
      * The time when the action started.
      */
     @DateTimeFormat(iso= DateTimeFormat.ISO.DATE_TIME)
-    @JsonFormat(pattern = "HH:mm dd.MM.yyyy")
+    @JsonFormat(pattern = WebConfig.DATE_TIME_PATTERN)
     private LocalDateTime startTime;
 
     /**
      * The time when the action ended.
      */
     @DateTimeFormat(iso= DateTimeFormat.ISO.DATE_TIME)
-    @JsonFormat(pattern = "HH:mm dd.MM.yyyy")
+    @JsonFormat(pattern = WebConfig.DATE_TIME_PATTERN)
     private LocalDateTime endTime;
 
     /**

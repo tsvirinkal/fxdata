@@ -15,7 +15,6 @@ import { NgbPopoverModule } from '@ng-bootstrap/ng-bootstrap';
 })
 export class StateComponent {
   @Input() item!: State;
-  readableState!: string;
 
   getStateClass(): string {
     if (!this.item) return '???';

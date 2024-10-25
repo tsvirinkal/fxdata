@@ -1,9 +1,12 @@
 package com.vts.fxdata.models.dto;
 
+import com.vts.fxdata.utils.TimeUtils;
+
 public class Result {
     private String pair;
     private String timeframe;
     private String action;
+    private String state;
     private Integer targetPips;
     private Integer profit;
     private Integer maxDrawdown;
@@ -11,11 +14,13 @@ public class Result {
     private Integer maxProgress;
     private String startTime;
     private String endTime;
+    private String duration;
 
-    public Result(String pair, String timeframe, String action, Integer targetPips, Integer profit, Integer maxDrawdown, Integer minProgress, Integer maxProgress, String startTime, String endTime) {
+    public Result(String pair, String timeframe, String action, String state, Integer targetPips, Integer profit, Integer maxDrawdown, Integer minProgress, Integer maxProgress, String startTime, String endTime, String duration) {
         this.pair = pair;
         this.timeframe = timeframe;
         this.action = action;
+        this.state = state;
         this.targetPips = targetPips;
         this.profit = profit;
         this.maxDrawdown = maxDrawdown;
@@ -23,6 +28,7 @@ public class Result {
         this.maxProgress = maxProgress;
         this.startTime = startTime;
         this.endTime = endTime;
+        this.duration = duration;
     }
 
     public String getPair() { return pair; }
@@ -36,6 +42,14 @@ public class Result {
     public String getAction() { return action; }
 
     public void setAction(String action) { this.action = action; }
+
+    public String getState() {
+        return state;
+    }
+
+    public void setState(String state) {
+        this.state = state;
+    }
 
     public Integer getTargetPips() {
         return targetPips;
@@ -91,5 +105,13 @@ public class Result {
 
     public void setEndTime(String endTime) {
         this.endTime = endTime;
+    }
+
+    public String getDuration() {
+        return duration;
+    }
+
+    public void setDuration(String duration) {
+        this.duration = duration;
     }
 }

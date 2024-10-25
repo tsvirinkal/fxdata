@@ -9,7 +9,7 @@ import { Action } from "../../models/action.model";
 import { interval, Subscription } from 'rxjs';
 
 @Component({
-  selector: 'state',
+  selector: 'states',
   standalone: true,
   imports: [CommonModule, NgbPopoverModule, StateComponent],
   templateUrl: './states.component.html',

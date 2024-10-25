@@ -1,6 +1,7 @@
 package com.vts.fxdata.models.dto;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.vts.fxdata.configuration.WebConfig;
 import com.vts.fxdata.entities.Record;
 
 import java.time.LocalDate;
@@ -11,7 +12,7 @@ public class DayRecords {
 
     private long id;
 
-    @JsonFormat(pattern = "dd.MM.yyyy")
+    @JsonFormat(pattern = WebConfig.DATE_PATTERN)
     private LocalDate date;
     private List<Record> records;
 

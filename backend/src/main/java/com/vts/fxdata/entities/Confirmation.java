@@ -1,6 +1,7 @@
 package com.vts.fxdata.entities;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.vts.fxdata.configuration.WebConfig;
 import com.vts.fxdata.models.ActionEnum;
 import com.vts.fxdata.models.TimeframeEnum;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -38,7 +39,7 @@ public class Confirmation {
     private ActionEnum action;
     @Column(columnDefinition= "TIMESTAMP WITH TIME ZONE DEFAULT now()")
     @DateTimeFormat(iso= DateTimeFormat.ISO.DATE_TIME)
-    @JsonFormat(pattern = "HH:mm dd.MM.yyyy")
+    @JsonFormat(pattern = WebConfig.DATE_TIME_PATTERN)
     private LocalDateTime time;
 
     public Confirmation(String pair, TimeframeEnum timeframe, ActionEnum action, LocalDateTime time, long recordId) {

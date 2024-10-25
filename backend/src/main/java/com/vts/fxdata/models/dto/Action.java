@@ -1,6 +1,7 @@
 package com.vts.fxdata.models.dto;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.vts.fxdata.configuration.WebConfig;
 import com.vts.fxdata.models.ActionEnum;
 
 import java.time.LocalDateTime;
@@ -9,7 +10,7 @@ public class Action {
     private ActionEnum action;
     private int targetPips;
 
-    @JsonFormat(pattern = "HH:mm dd.MM.yyyy")
+    @JsonFormat(pattern = WebConfig.DATE_TIME_PATTERN)
     private LocalDateTime time;
 
     private double entryPrice;

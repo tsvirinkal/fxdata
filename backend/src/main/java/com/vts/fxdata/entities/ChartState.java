@@ -1,6 +1,7 @@
 package com.vts.fxdata.entities;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.vts.fxdata.configuration.WebConfig;
 import com.vts.fxdata.models.dto.State;
 import com.vts.fxdata.models.StateEnum;
 import com.vts.fxdata.models.TimeframeEnum;
@@ -43,12 +44,12 @@ public class ChartState {
 
     @Column(columnDefinition= "TIMESTAMP WITH TIME ZONE")
     @DateTimeFormat(iso= DateTimeFormat.ISO.DATE_TIME)
-    @JsonFormat(pattern = "HH:mm dd.MM.yyyy")
+    @JsonFormat(pattern = WebConfig.DATE_TIME_PATTERN)
     private LocalDateTime updated;
 
     @Column(columnDefinition= "TIMESTAMP WITH TIME ZONE DEFAULT now()")
     @DateTimeFormat(iso= DateTimeFormat.ISO.DATE_TIME)
-    @JsonFormat(pattern = "HH:mm dd.MM.yyyy")
+    @JsonFormat(pattern = WebConfig.DATE_TIME_PATTERN)
     private LocalDateTime time;
 
     public ChartState(Long id, String pair, TimeframeEnum timeframe, StateEnum state) {

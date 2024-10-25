@@ -29,8 +29,8 @@ public class JacksonConfiguration {
 
         return builder -> {
             // formatter
-            DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("dd.MM.yyyy");
-            DateTimeFormatter dateTimeFormatter =  DateTimeFormatter.ofPattern("HH:mm dd.MM.yyyy");
+            DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern(WebConfig.DATE_PATTERN);
+            DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern(WebConfig.DATE_TIME_PATTERN);
 
             // deserializers
             builder.deserializers(new LocalDateDeserializer(dateFormatter));
@@ -44,7 +44,7 @@ public class JacksonConfiguration {
 
     @Bean
     public Jackson2ObjectMapperBuilderCustomizer zonedDateTimeCustomizer() {
-        DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm dd.MM.yyyy");
+        DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern(WebConfig.DATE_TIME_PATTERN);
 
         return builder -> {
             builder.serializers(new StdSerializer<>(OffsetDateTime.class) {

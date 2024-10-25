@@ -139,8 +139,8 @@ public class MainControllerV1 {
     }
 
     @GetMapping("/states/")
-    public List<Pair> getStates(@RequestParam(value = "state", required = false) StateEnum state, TimeZone timezone) {
-        return stateService.getLastStates(state);
+    public List<Pair> getStates(@RequestParam(value = "state", required = false) StateEnum state) {
+        return stateService.getLastStates(state, 0);
     }
 
     @PostMapping("/addclient")
@@ -155,8 +155,7 @@ public class MainControllerV1 {
         }
     }
 
-    private void pushNotifications(String msgLine1, String msgLine2) throws PushClientException, InterruptedException {
-        // TODO add a retry mechanism in case of a failure
+    private void pushNotifications(String msgLine1, String msgLine2) throws PushClientException {
         for (Client client:this.clientService.getClients()) {
             var token = client.getToken();
             NotificationServer.send(token, "FxData", msgLine1, msgLine2);

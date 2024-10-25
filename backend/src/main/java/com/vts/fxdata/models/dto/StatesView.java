@@ -1,6 +1,7 @@
 package com.vts.fxdata.models.dto;
 
 import com.vts.fxdata.entities.ChartState;
+import com.vts.fxdata.entities.Record;
 import com.vts.fxdata.models.TimeframeEnum;
 import com.vts.fxdata.utils.TimeUtils;
 
@@ -12,7 +13,7 @@ public class StatesView {
 
     private final static TimeframeEnum[] timeframes = new TimeframeEnum[] { TimeframeEnum.H1, TimeframeEnum.H4, TimeframeEnum.D1 };
 
-    public static List<Pair> getPairs(List<ChartState> chartStates) {
+    public static List<Pair> getPairs(List<ChartState> chartStates, int tzOffset) {
         var pairStates = new TreeMap<String, Map<TimeframeEnum, ChartState>>();
         chartStates.forEach(state -> {
             var map = pairStates.get(state.getPair());
@@ -51,7 +52,7 @@ public class StatesView {
                         // display the last action
                         var action = actionList.get(actionList.size()-1);
                         progress = action.getProgress();
-                        actionView = new Action(action.getAction(), action.getTargetPips(), action.getTime(),
+                        actionView = new Action(action.getAction(), action.getTargetPips(), action.getTime().minusMinutes(tzOffset),
                                                 action.getPrice(), action.getStartPrice(), action.getTargetPrice());
                     }
                     state = new State(pair, chState.getState().toString(), tf.toString(),

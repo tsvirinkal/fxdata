@@ -56,13 +56,13 @@ public class StateService {
         return this.stateRepository.getStates(pair);
     }
 
-    public List<Pair> getLastStates(StateEnum state) {
+    public List<Pair> getLastStates(StateEnum state, int tzOffset) {
         List<ChartState> ret;
         if (state==null)
             ret = this.stateRepository.getStates();
         else
             ret = this.stateRepository.getStates(state.ordinal());
-        return StatesView.getPairs(ret);
+        return StatesView.getPairs(ret, tzOffset);
     }
 
     @Transactional

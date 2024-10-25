@@ -3,12 +3,14 @@ export interface Result {
     pair: string;
     timeframe: string;
     action: string;
+    state: string;
     targetPips: number;
     profit: number;
-    startTime: string;
-    endTime: string;
     maxDrawdown: number;
     minProgress: number;
     maxProgress: number;
+    startTime: string;
+    endTime: string;
+    duration: string;
   }
   

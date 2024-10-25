@@ -177,8 +177,9 @@ public class MainControllerV2 {
     }
 
     @GetMapping("/states")
-    public List<Pair> getStates(@RequestParam(value = "state", required = false) StateEnum state, TimeZone timezone) {
-        return this.stateService.getLastStates(state);
+    public List<Pair> getStates(@RequestParam(value = "state", required = false) StateEnum state,
+                                @RequestParam(name="tzo", required = false) Integer tzOffset) {
+        return this.stateService.getLastStates(state, tzOffset==null ? 0:tzOffset.intValue());
     }
 
     @PostMapping("/addclient")
@@ -207,20 +208,25 @@ public class MainControllerV2 {
     }
 
     @GetMapping("/results")
-    public List<Result> getResults(TimeZone timezone) {
+    public List<Result> getResults(@RequestParam(name="tzo", required = false) Integer tzOffset) {
         var results = new ArrayList<Result>();
         for(var r : this.recordService.getResultRecords()) {
+            var startTime = r.getStartTime().minusMinutes(tzOffset==null ? 0:tzOffset.intValue());
+            var endTime = r.getEndTime().minusMinutes(tzOffset==null ? 0:tzOffset.intValue());
+            if (r.getAction()==null) continue; // TODO remove
             results.add(new Result(
                     r.getPair(),
                     r.getTimeframe().toString(),
                     r.getAction().toString(),
+                    r.getState().toString(),
                     r.getTargetPips(),
                     r.getProfit(),
                     r.getMaxDrawdown(),
                     r.getMinProgress(),
                     r.getMaxProgress(),
-                    r.getStartTime().toString(),
-                    r.getEndTime().toString()));
+                    TimeUtils.formatTime(startTime),
+                    TimeUtils.formatTime(endTime),
+                    TimeUtils.formatDuration(r.getStartTime(), r.getEndTime(), false)));
         }
         return results;
     }
@@ -294,7 +300,15 @@ public class MainControllerV2 {
                 }
             } else {
                 stateAction.setEndTime(TimeUtils.removeSeconds(LocalDateTime.now(ZoneOffset.UTC)));
-                stateAction.setProfit(FxUtils.getPips(stateAction.getPrice(), newAction.getPrice(), state.getPoint()));
+                double highPrice, lowPrice;
+                if (stateAction.getAction() == ActionEnum.Buy) {
+                    lowPrice = stateAction.getPrice();
+                    highPrice = newAction.getPrice();   // hopefully higher than the price before
+                } else {
+                    highPrice = stateAction.getPrice();
+                    lowPrice = newAction.getPrice();    // hopefully lower than the price before
+                }
+                stateAction.setProfit(FxUtils.getPips(highPrice, lowPrice, state.getPoint()));
                 // for pairs in Range this would mean to close existing trades and reverse
                 // for pairs in a trend we should ignore an action in the opposite direction to the trend
                 if (!notificationSent) {

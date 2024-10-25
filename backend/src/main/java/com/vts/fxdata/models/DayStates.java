@@ -1,6 +1,7 @@
 package com.vts.fxdata.models;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.vts.fxdata.configuration.WebConfig;
 import com.vts.fxdata.entities.ChartState;
 
 import java.time.LocalDate;
@@ -11,7 +12,7 @@ public class DayStates {
 
     private long id;
 
-    @JsonFormat(pattern = "dd.MM.yyyy")
+    @JsonFormat(pattern = WebConfig.DATE_PATTERN)
     private LocalDate date;
     private List<ChartState> states;
 
