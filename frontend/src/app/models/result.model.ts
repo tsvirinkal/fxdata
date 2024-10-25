@@ -4,6 +4,8 @@ export interface Result {
     timeframe: string;
     action: string;
     state: string;
+    entryPrice: number;
+    exitPrice: number;
     targetPips: number;
     profit: number;
     maxDrawdown: number;

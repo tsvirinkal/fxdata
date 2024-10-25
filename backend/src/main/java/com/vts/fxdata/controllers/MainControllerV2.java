@@ -219,6 +219,8 @@ public class MainControllerV2 {
                     r.getTimeframe().toString(),
                     r.getAction().toString(),
                     r.getState().toString(),
+                    r.getPrice(),
+                    r.getExitPrice(),
                     r.getTargetPips(),
                     r.getProfit(),
                     r.getMaxDrawdown(),
@@ -300,6 +302,8 @@ public class MainControllerV2 {
                 }
             } else {
                 stateAction.setEndTime(TimeUtils.removeSeconds(LocalDateTime.now(ZoneOffset.UTC)));
+                stateAction.setExitPrice(newAction.getPrice());  // price of the new action is the price we complete the previous action
+                                                                // TODO this works for range, what about trend?
                 double highPrice, lowPrice;
                 if (stateAction.getAction() == ActionEnum.Buy) {
                     lowPrice = stateAction.getPrice();

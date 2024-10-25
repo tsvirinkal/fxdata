@@ -1,12 +1,12 @@
 package com.vts.fxdata.models.dto;
 
-import com.vts.fxdata.utils.TimeUtils;
-
 public class Result {
     private String pair;
     private String timeframe;
     private String action;
     private String state;
+    private Double entryPrice;
+    private Double exitPrice;
     private Integer targetPips;
     private Integer profit;
     private Integer maxDrawdown;
@@ -16,11 +16,15 @@ public class Result {
     private String endTime;
     private String duration;
 
-    public Result(String pair, String timeframe, String action, String state, Integer targetPips, Integer profit, Integer maxDrawdown, Integer minProgress, Integer maxProgress, String startTime, String endTime, String duration) {
+    public Result(String pair, String timeframe, String action, String state, Double entryPrice, Double exitPrice,
+                  Integer targetPips, Integer profit, Integer maxDrawdown, Integer minProgress, Integer maxProgress,
+                  String startTime, String endTime, String duration) {
         this.pair = pair;
         this.timeframe = timeframe;
         this.action = action;
         this.state = state;
+        this.entryPrice = entryPrice;
+        this.exitPrice = exitPrice;
         this.targetPips = targetPips;
         this.profit = profit;
         this.maxDrawdown = maxDrawdown;
@@ -49,6 +53,22 @@ public class Result {
 
     public void setState(String state) {
         this.state = state;
+    }
+
+    public Double getEntryPrice() {
+        return entryPrice;
+    }
+
+    public void setEntryPrice(Double entryPrice) {
+        this.entryPrice = entryPrice;
+    }
+
+    public Double getExitPrice() {
+        return exitPrice;
+    }
+
+    public void setExitPrice(Double exitPrice) {
+        this.exitPrice = exitPrice;
     }
 
     public Integer getTargetPips() {

@@ -66,6 +66,11 @@ public class Record {
     private Double price;
 
     /**
+     * The bid price at the time when the action was completed.
+     */
+    private Double exitPrice;
+
+    /**
      * The target price for the potential move.
      */
     private Double targetPrice;
@@ -217,6 +222,14 @@ public class Record {
 
     public void setPrice(Double price) {
         this.price = price;
+    }
+
+    public Double getExitPrice() {
+        return exitPrice ==null ? 0 : exitPrice;
+    }
+
+    public void setExitPrice(Double exitPrice) {
+        this.exitPrice = exitPrice;
     }
 
     public Double getStartPrice() {
