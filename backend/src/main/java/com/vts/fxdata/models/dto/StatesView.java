@@ -52,11 +52,11 @@ public class StatesView {
                         // display the last action
                         var action = actionList.get(actionList.size()-1);
                         progress = action.getProgress();
-                        actionView = new Action(action.getAction(), action.getTargetPips(), action.getTime().minusMinutes(tzOffset),
+                        actionView = new Action(action.getAction(), action.getTargetPips(), TimeUtils.formatTime(action.getTime().minusMinutes(tzOffset)),
                                                 action.getPrice(), action.getStartPrice(), action.getTargetPrice());
                     }
                     state = new State(pair, chState.getState().toString(), tf.toString(),
-                                        chState.getTime().toString(), actionView, progress);
+                            TimeUtils.formatTime(chState.getTime().minusMinutes(tzOffset)), actionView, progress);
                 }
                 states.add(state);
             }

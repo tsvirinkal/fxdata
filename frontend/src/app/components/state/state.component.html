@@ -5,8 +5,10 @@
         Entry price: {{ this.item.action?.entryPrice }}<br>
         Start Price: {{ this.item.action?.startPrice }}<br>
         Target Price: {{ this.item.action?.targetPrice }}<br>
-        Price has moved {{ this.item.progress }}% to the target</div>
-    <div *ngIf="!hasAction()" class="popup">{{ this.item.timeframe }} chart is {{ this.getReadableState() }}</div>
+        Price has moved {{ this.item.progress }}% to the target<br>
+        Chart {{ this.item.timeframe }} is {{ this.getReadableState() }} from {{ this.item.time }}
+    </div>
+    <div *ngIf="!hasAction()" class="popup">Chart {{ this.item.timeframe }} is {{ this.getReadableState() }}<br>from {{ this.item.time }}</div>
 </ng-template>
 <ng-template #popTitle>
     <div *ngIf="hasAction()" class="popup">Action Details</div>

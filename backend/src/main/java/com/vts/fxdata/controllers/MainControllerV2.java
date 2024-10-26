@@ -5,6 +5,7 @@ import com.niamedtech.expo.exposerversdk.PushClientException;
 import com.vts.fxdata.entities.ChartState;
 import com.vts.fxdata.entities.Client;
 import com.vts.fxdata.entities.Record;
+import com.vts.fxdata.entities.Trade;
 import com.vts.fxdata.models.*;
 import com.vts.fxdata.models.dto.*;
 import com.vts.fxdata.notifications.NotificationServer;
@@ -34,6 +35,8 @@ public class MainControllerV2 {
     @Autowired
     private final ConfirmationService confirmationService;
     @Autowired
+    private final TradeService tradeService;
+    @Autowired
     private final ClientService clientService;
 
     @Autowired
@@ -41,11 +44,13 @@ public class MainControllerV2 {
 
     public MainControllerV2(RecordService recordService,
                             ConfirmationService confirmationService,
+                            TradeService tradeService,
                             ClientService clientService,
                             StateService stateService,
                             HttpServletRequest request) {
         this.recordService = recordService;
         this.confirmationService = confirmationService;
+        this.tradeService = tradeService;
         this.clientService = clientService;
         this.stateService = stateService;
         this.request = request;
@@ -121,9 +126,9 @@ public class MainControllerV2 {
             rec.setTargetPrice(request.getLevels()[1]);
             rec.setNotes(notes);
 
-            var targetPips = FxUtils.getPips(rec.getTargetPrice(),rec.getStartPrice(),request.getPoint());
+            var targetPips = FxUtils.getPips(rec.getTargetPrice(),request.getPrice(),request.getPoint());
             if (rec.getAction()==ActionEnum.Sell) {
-                targetPips = FxUtils.getPips(rec.getStartPrice(),rec.getTargetPrice(),request.getPoint());
+                targetPips = FxUtils.getPips(request.getPrice(),rec.getTargetPrice(),request.getPoint());
             }
             rec.setTargetPips(targetPips);
 
@@ -233,6 +238,48 @@ public class MainControllerV2 {
         return results;
     }
 
+    @GetMapping("/trades")
+    public List<Trade> getTrades(@RequestParam(name="tzo", required = false) Integer tzOffset) {
+        return this.tradeService.getTrades();
+    }
+
+    @PostMapping("/trade/opened/{id}")
+    public ResponseEntity<String> acknowledgeTradeOpened(@PathVariable Long id) {
+        try {
+            var trade = this.tradeService.findById(id);
+            if (trade==null) {
+                return new ResponseEntity<>("Wrong id", HttpStatus.BAD_REQUEST);
+            }
+            if (trade.getOpenedTime()!=null) {
+                return new ResponseEntity<>("Failed to open an invalid trade.", HttpStatus.BAD_REQUEST);
+            }
+            trade.setOpenedTime(LocalDateTime.now(ZoneOffset.UTC));
+            trade.setCommand(TradeEnum.Wait);
+            this.tradeService.save(trade);
+        } catch (Exception e) {
+            return new ResponseEntity<>(e.getMessage(), HttpStatus.BAD_REQUEST);
+        }
+        return new ResponseEntity<>(null, HttpStatus.OK);
+    }
+
+    @PostMapping("/trade/closed/{id}")
+    public ResponseEntity<String> acknowledgeTradeClosed(@PathVariable Long id) {
+        try {
+            var trade = this.tradeService.findById(id);
+            if (trade==null) {
+                return new ResponseEntity<>("Wrong id", HttpStatus.BAD_REQUEST);
+            }
+            if (trade.getOpenedTime()==null || trade.getClosedTime()!=null) {
+                return new ResponseEntity<>("Failed to close an invalid trade.", HttpStatus.BAD_REQUEST);
+            }
+            trade.setClosedTime(LocalDateTime.now(ZoneOffset.UTC));
+            this.tradeService.save(trade);
+        } catch (Exception e) {
+            return new ResponseEntity<>(e.getMessage(), HttpStatus.BAD_REQUEST);
+        }
+        return new ResponseEntity<>(null, HttpStatus.OK);
+    }
+
     private void requestConfirmation(com.vts.fxdata.entities.Record rec) {
         var pending = getPendingConfirmations(rec.getPair()).stream().filter(c -> c.getTimeframe()==rec.getTimeframe()).findFirst();
         if (pending.isPresent()) {
@@ -320,11 +367,18 @@ public class MainControllerV2 {
                     notificationSent = pushNotifications(message, String.format("is replacing %s on %s at %s",
                             stateAction.getAction(), stateAction.getTimeframe(), stateAction.getTime()));
                 }
+                var trade = this.tradeService.findByRecordId(stateAction.getId());
+                if (trade!=null) {
+                    // TODO remove and throw if NULL. Handle NULLs only for transition.
+                    trade.setCommand(TradeEnum.Close);
+                    this.tradeService.save(trade);
+                }
             }
         }
         state.addAction(newAction);
         state.setPoint(point);
         this.stateService.save(state);
+        this.tradeService.save(new Trade(newAction, TradeEnum.Open));
     }
 
     private void updateStateMetrics(ChartState state, Heartbeat data) {

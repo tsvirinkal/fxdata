@@ -9,16 +9,13 @@ import java.time.LocalDateTime;
 public class Action {
     private ActionEnum action;
     private int targetPips;
-
-    @JsonFormat(pattern = WebConfig.DATE_TIME_PATTERN)
-    private LocalDateTime time;
-
+    private String time;
     private double entryPrice;
     private double startPrice;
 
     private  double targetPrice;
 
-    public Action(ActionEnum action, int targetPips, LocalDateTime time, double entryPrice, double startPrice, double targetPrice) {
+    public Action(ActionEnum action, int targetPips, String time, double entryPrice, double startPrice, double targetPrice) {
         this.action = action;
         this.targetPips = targetPips;
         this.time = time;
@@ -44,11 +41,11 @@ public class Action {
         this.targetPips = target;
     }
 
-    public LocalDateTime getTime() {
+    public String getTime() {
         return time;
     }
 
-    public void setTime(LocalDateTime time) {
+    public void setTime(String time) {
         this.time = time;
     }
 
