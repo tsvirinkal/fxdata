@@ -33,6 +33,6 @@ public class TradeService {
     }
 
     public void save(Trade trade) {
-        this.tradeRepository.save(trade);
+        this.tradeRepository.saveAndFlush(trade);
     }
 }

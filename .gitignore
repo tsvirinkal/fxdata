@@ -1,5 +1,7 @@
 **/src/main/**/target/
 **/src/test/**/target/
+internal/*
+proxy/*
 
 ### IntelliJ IDEA ###
 backend/.idea
@@ -10,6 +12,7 @@ backend/.mvn
 backend/HELP.md
 backend/target/
 backend/logs/
+backend/src/main/resources/static/
 
 ### VS Code ###
 frontend/.vscode/

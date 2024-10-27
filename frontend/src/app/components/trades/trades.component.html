@@ -1,0 +1,22 @@
+<table class="table table-striped text-center container">
+    <thead>
+      <tr class="headers">
+        <th class="w-12 header">Pair</th>
+        <th class="w-12 header">Command</th>
+        <th class="w-12 header">Action</th>
+        <th class="w-12 header">Time Created</th>
+        <th class="w-12 header">Time Opened</th>
+        <th class="w-12 header">Time Closed</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let tr of trades">
+        <td class="column">{{ tr.action.pair }}</td>
+        <td class="column">{{ tr.command }}</td>
+        <td class="column">{{ tr.action.action }}</td>
+        <td class="column">{{ tr.createdTime }}</td>
+        <td class="column">{{ tr.openedTime }}</td>
+        <td class="column">{{ tr.closedTime }}</td>
+      </tr>
+    </tbody>
+  </table>

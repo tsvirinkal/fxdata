@@ -5,6 +5,7 @@ import { Day } from '../models/day.model';
 import { Pair } from '../models/pair.model';
 import { environment } from '../../environments/environment';
 import { Result } from '../models/result.model';
+import { Trade } from '../models/trade.model';
 
 var offset = new Date().getTimezoneOffset();
 var tzoffset = "?tzo=" + offset;
@@ -29,5 +30,10 @@ export class DataService {
   getResults(): Observable<Result[]> {
     console.log(environment.apiUrl);
     return this.http.get<any>(environment.apiUrl + "results" + tzoffset); 
+  }
+
+  getTrades(): Observable<Trade[]> {
+    console.log(environment.apiUrl);
+    return this.http.get<any>(environment.apiUrl + "trades" + tzoffset); 
   }
 }

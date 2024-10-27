@@ -12,6 +12,12 @@
 		</ng-template>
 	</li>
 	<li [ngbNavItem]="3">
+		<button ngbNavLink>Trades</button>
+		<ng-template ngbNavContent>
+			<trades></trades>
+		</ng-template>
+	</li>	
+	<li [ngbNavItem]="4">
 		<button ngbNavLink>Results</button>
 		<ng-template ngbNavContent>
 			<results></results>
