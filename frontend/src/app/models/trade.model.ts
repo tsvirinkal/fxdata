@@ -4,7 +4,7 @@ export interface Trade {
     id: number;
     pair: string;
     command: string;
-    action: Record;
+    action: string;
     createdTime: string;
     openedTime: string;
     closedTime: string;

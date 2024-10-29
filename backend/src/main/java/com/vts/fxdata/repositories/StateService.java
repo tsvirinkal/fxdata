@@ -3,9 +3,8 @@ package com.vts.fxdata.repositories;
 import com.vts.fxdata.entities.ChartState;
 import com.vts.fxdata.models.DayStates;
 import com.vts.fxdata.models.StateEnum;
-import com.vts.fxdata.models.TimeframeEnum;
 import com.vts.fxdata.models.dto.Pair;
-import com.vts.fxdata.models.dto.StatesView;
+import com.vts.fxdata.models.StatesView;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -56,13 +55,8 @@ public class StateService {
         return this.stateRepository.getStates(pair);
     }
 
-    public List<Pair> getLastStates(StateEnum state, int tzOffset) {
-        List<ChartState> ret;
-        if (state==null)
-            ret = this.stateRepository.getStates();
-        else
-            ret = this.stateRepository.getStates(state.ordinal());
-        return StatesView.getPairs(ret, tzOffset);
+    public List<ChartState> getLastStates(StateEnum state) {
+        return state==null ? this.stateRepository.getStates() : this.stateRepository.getStates(state.ordinal());
     }
 
     @Transactional

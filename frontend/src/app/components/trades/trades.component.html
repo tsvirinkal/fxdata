@@ -11,9 +11,9 @@
     </thead>
     <tbody>
       <tr *ngFor="let tr of trades">
-        <td class="column">{{ tr.action.pair }}</td>
+        <td class="column">{{ tr.pair }}</td>
         <td class="column">{{ tr.command }}</td>
-        <td class="column">{{ tr.action.action }}</td>
+        <td class="column">{{ tr.action }}</td>
         <td class="column">{{ tr.createdTime }}</td>
         <td class="column">{{ tr.openedTime }}</td>
         <td class="column">{{ tr.closedTime }}</td>

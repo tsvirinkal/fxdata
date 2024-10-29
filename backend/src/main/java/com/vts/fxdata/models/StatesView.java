@@ -1,8 +1,9 @@
-package com.vts.fxdata.models.dto;
+package com.vts.fxdata.models;
 
 import com.vts.fxdata.entities.ChartState;
-import com.vts.fxdata.entities.Record;
-import com.vts.fxdata.models.TimeframeEnum;
+import com.vts.fxdata.models.dto.Action;
+import com.vts.fxdata.models.dto.Pair;
+import com.vts.fxdata.models.dto.State;
 import com.vts.fxdata.utils.TimeUtils;
 
 import java.time.LocalDateTime;

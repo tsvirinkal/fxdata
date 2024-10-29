@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.*;
 
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.*;
 
@@ -119,34 +120,52 @@ public class MainControllerV2 {
             }
             var recordId = iterator.next();
             rec = this.recordService.getRecordById(recordId).get();
-            notes = buildNotes(rec, request.getLevels(), iterator);
-            rec.setConfirmation(true);
-            rec.setPrice(request.getPrice());
-            rec.setStartPrice(request.getLevels()[0]);
-            rec.setTargetPrice(request.getLevels()[1]);
-            rec.setNotes(notes);
+            // check if confirmation does not clash with a trend in this timeframe
+            var state = this.stateService.getState(rec.getPair(), rec.getTimeframe().ordinal());
+            // TODO check the strength of the trend. Must be older than 150 candles to trust it
+            // TODO and ignore opposite signals
+            if (state.getState() == StateEnum.Bullish && rec.getAction() == ActionEnum.Sell ||
+                state.getState() == StateEnum.Bearish && rec.getAction() == ActionEnum.Buy) {
+                // ignore sells in a bullish trend
+                // ignore buys in a bearish trend
+                // delete all records that signal to act against the trend
+                this.recordService.deleteRecord(recordId);
+                while(iterator.hasNext()) {
+                    var otherId = iterator.next();
+                    this.recordService.deleteRecord(otherId);
+                }
+            } else {
+                notes = buildNotes(rec, request.getLevels(), iterator);
+                rec.setConfirmation(true);
+                rec.setPrice(request.getPrice());
+                rec.setStartPrice(request.getLevels()[0]);
+                rec.setTargetPrice(request.getLevels()[1]);
+                rec.setTime(LocalDateTime.now(ZoneOffset.UTC));
+                rec.setNotes(notes);
 
-            var targetPips = FxUtils.getPips(rec.getTargetPrice(),request.getPrice(),request.getPoint());
-            if (rec.getAction()==ActionEnum.Sell) {
-                targetPips = FxUtils.getPips(request.getPrice(),rec.getTargetPrice(),request.getPoint());
+                var targetPips = FxUtils.getPips(rec.getTargetPrice(), request.getPrice(), request.getPoint());
+                if (rec.getAction() == ActionEnum.Sell) {
+                    targetPips = FxUtils.getPips(request.getPrice(), rec.getTargetPrice(), request.getPoint());
+                }
+                rec.setTargetPips(targetPips);
+
+                var progress = FxUtils.getProgress(request.getPrice(), rec.getStartPrice(), request.getPoint(), targetPips);
+                if (rec.getAction() == ActionEnum.Sell) {
+                    progress = FxUtils.getProgress(rec.getStartPrice(), request.getPrice(), request.getPoint(), targetPips);
+                }
+                rec.setProgress(progress);
+                rec.setMinProgress(progress);
+                rec.setMaxProgress(progress);
+                this.recordService.save(rec);
+
+                // update the corresponding state
+                updateStateWithNewAction(rec, request.getPoint());
             }
-            rec.setTargetPips(targetPips);
-
-            var progress = FxUtils.getProgress(request.getPrice(), rec.getStartPrice(), request.getPoint(), targetPips);
-            if (rec.getAction()==ActionEnum.Sell) {
-                progress = FxUtils.getProgress(rec.getStartPrice(), request.getPrice(), request.getPoint(), targetPips);
-            }
-            rec.setProgress(progress);
-            rec.setMinProgress(progress);
-            rec.setMaxProgress(progress);
-            this.recordService.save(rec);
-
             // remove record IDs
             confirmation.getRecordIds().clear();
             this.confirmationService.save(confirmation);
 
-            // update the corresponding state
-            updateStateWithNewAction(rec, request.getPoint());
+
 
         } catch(Exception e) {
             errorMessage = e.getMessage()+"\r\n"+notes;
@@ -157,10 +176,11 @@ public class MainControllerV2 {
         }
 
         // send out notifications
+        int count = rec.getConfirmationDelay()==null ? 0: rec.getConfirmationDelay().length();
         String message = String.format("%s %s  (%s)", rec.getAction(),
                 rec.getPair(), rec.getPrice());
         pushNotifications(message, rec.getTimeframe() + " " + rec.getState() +
-                " ".repeat(24-rec.getConfirmationDelay().length()) + rec.getConfirmationDelay());
+                " ".repeat(24-count) + rec.getConfirmationDelay());
 
         this.confirmationService.deleteConfirmation(request.getId());
         return new ResponseEntity<>(null, HttpStatus.OK);
@@ -184,7 +204,8 @@ public class MainControllerV2 {
     @GetMapping("/states")
     public List<Pair> getStates(@RequestParam(value = "state", required = false) StateEnum state,
                                 @RequestParam(name="tzo", required = false) Integer tzOffset) {
-        return this.stateService.getLastStates(state, tzOffset==null ? 0:tzOffset.intValue());
+        var states = this.stateService.getLastStates(state);
+        return StatesView.getPairs(states, tzOffset==null ? 0:tzOffset.intValue());
     }
 
     @PostMapping("/addclient")
@@ -239,8 +260,9 @@ public class MainControllerV2 {
     }
 
     @GetMapping("/trades")
-    public List<Trade> getTrades(@RequestParam(name="tzo", required = false) Integer tzOffset) {
-        return this.tradeService.getTrades();
+    public List<com.vts.fxdata.models.dto.Trade> getTrades(@RequestParam(name="tzo", required = false) Integer tzOffset,
+                                                           @RequestParam(name="act", required = false) boolean active) {
+        return TradesView.getTrades(active, this.tradeService.getTrades(), tzOffset==null ? 0: tzOffset);
     }
 
     @PostMapping("/trade/opened/{id}")
@@ -252,6 +274,9 @@ public class MainControllerV2 {
             }
             if (trade.getOpenedTime()!=null) {
                 return new ResponseEntity<>("Failed to open an invalid trade.", HttpStatus.BAD_REQUEST);
+            }
+            if (trade.getAction().getTimeframe()!=TimeframeEnum.H1) {
+                return new ResponseEntity<>("Invalid timeframe in trade.", HttpStatus.BAD_REQUEST);
             }
             trade.setOpenedTime(LocalDateTime.now(ZoneOffset.UTC));
             trade.setCommand(TradeEnum.Wait);
@@ -271,6 +296,9 @@ public class MainControllerV2 {
             }
             if (trade.getOpenedTime()==null || trade.getClosedTime()!=null) {
                 return new ResponseEntity<>("Failed to close an invalid trade.", HttpStatus.BAD_REQUEST);
+            }
+            if (trade.getAction().getTimeframe()!=TimeframeEnum.H1) {
+                return new ResponseEntity<>("Invalid timeframe in trade.", HttpStatus.BAD_REQUEST);
             }
             trade.setClosedTime(LocalDateTime.now(ZoneOffset.UTC));
             this.tradeService.save(trade);
@@ -345,7 +373,7 @@ public class MainControllerV2 {
                 // will use the new action, the previous ones will have no end time
                 if (!notificationSent) {
                     var message = String.format("Another %s %s %s", newAction.getPair(), newAction.getTimeframe(), newAction.getAction());
-                    notificationSent = pushNotifications(message, String.format("previous was (%s) at %s", stateAction.getPrice(), stateAction.getTime()));
+                    notificationSent = pushNotifications(message, String.format("previous was (%s) at %s", stateAction.getPrice(), TimeUtils.formatTime(stateAction.getTime())));
                 }
             } else {
                 stateAction.setEndTime(TimeUtils.removeSeconds(LocalDateTime.now(ZoneOffset.UTC)));
@@ -365,20 +393,24 @@ public class MainControllerV2 {
                 if (!notificationSent) {
                     var message = String.format("%s %s %s", newAction.getPair(), newAction.getTimeframe(), newAction.getAction());
                     notificationSent = pushNotifications(message, String.format("is replacing %s on %s at %s",
-                            stateAction.getAction(), stateAction.getTimeframe(), stateAction.getTime()));
+                            stateAction.getAction(), stateAction.getTimeframe(), TimeUtils.formatTime(stateAction.getTime())));
                 }
                 var trade = this.tradeService.findByRecordId(stateAction.getId());
                 if (trade!=null) {
-                    // TODO remove and throw if NULL. Handle NULLs only for transition.
-                    trade.setCommand(TradeEnum.Close);
-                    this.tradeService.save(trade);
+                    if (newAction.getTimeframe()==TimeframeEnum.H1) {
+                        // TODO remove and throw if NULL. Handle NULLs only for transition.
+                        trade.setCommand(TradeEnum.Close);
+                        this.tradeService.save(trade);
+                    }
                 }
             }
         }
         state.addAction(newAction);
         state.setPoint(point);
         this.stateService.save(state);
-        this.tradeService.save(new Trade(newAction, TradeEnum.Open));
+        if (newAction.getTimeframe()==TimeframeEnum.H1) {
+            this.tradeService.save(new Trade(newAction, TradeEnum.Open));
+        }
     }
 
     private void updateStateMetrics(ChartState state, Heartbeat data) {

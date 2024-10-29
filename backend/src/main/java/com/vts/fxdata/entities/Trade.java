@@ -34,7 +34,7 @@ public class Trade {
     @DateTimeFormat(iso= DateTimeFormat.ISO.DATE_TIME)
     @JsonFormat(pattern = WebConfig.DATE_TIME_PATTERN)
     private LocalDateTime closedTime;
-    
+
     @OneToOne(cascade = CascadeType.ALL)
     @JoinColumn(name = "recordId", referencedColumnName = "id")
     private Record action;

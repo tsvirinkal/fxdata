@@ -140,7 +140,8 @@ public class MainControllerV1 {
 
     @GetMapping("/states/")
     public List<Pair> getStates(@RequestParam(value = "state", required = false) StateEnum state) {
-        return stateService.getLastStates(state, 0);
+        var states = this.stateService.getLastStates(state);
+        return StatesView.getPairs(states, 0);
     }
 
     @PostMapping("/addclient")
