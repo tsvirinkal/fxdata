@@ -11,7 +11,7 @@
     <tbody>
       <tr *ngFor="let pair of pairs">
         <ng-template #popContent>
-          <div class="popup">Price: {{ pair.price }}<br>Updated: {{ pair.updated}}</div>
+          <div class="popup">Price: {{ pair.price }}<br>Updated: {{ pair.updated}}<br>ids: [{{ pair.states[0].actions }}]</div>
       </ng-template>
       <ng-template #popTitle>
           <div class="popup">{{ pair.name }}</div>

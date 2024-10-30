@@ -169,6 +169,8 @@ public class MainControllerV2 {
 
         } catch(Exception e) {
             errorMessage = e.getMessage()+"\r\n"+notes;
+            // TODO remove
+            pushNotifications(e.getMessage(), notes);
         }
 
         if (errorMessage!=null) {
@@ -375,6 +377,8 @@ public class MainControllerV2 {
                     var message = String.format("Another %s %s %s", newAction.getPair(), newAction.getTimeframe(), newAction.getAction());
                     notificationSent = pushNotifications(message, String.format("previous was (%s) at %s", stateAction.getPrice(), TimeUtils.formatTime(stateAction.getTime())));
                 }
+                // add a new action in the same direction
+                state.addAction(newAction);
             } else {
                 stateAction.setEndTime(TimeUtils.removeSeconds(LocalDateTime.now(ZoneOffset.UTC)));
                 stateAction.setExitPrice(newAction.getPrice());  // price of the new action is the price we complete the previous action
@@ -403,9 +407,11 @@ public class MainControllerV2 {
                         this.tradeService.save(trade);
                     }
                 }
+                // set new action
+                state.getActions().clear();
+                state.addAction(newAction);
             }
         }
-        state.addAction(newAction);
         state.setPoint(point);
         this.stateService.save(state);
         if (newAction.getTimeframe()==TimeframeEnum.H1) {

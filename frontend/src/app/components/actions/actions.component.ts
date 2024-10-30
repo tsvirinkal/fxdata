@@ -12,14 +12,25 @@ import { ActionComponent } from '../action/action.component';
   styleUrls: ['./actions.component.css']
 })
 export class ActionsComponent implements OnInit {
-
   items: Day[] = [];
-
+  pair: string | null = null;
   constructor(private dataService: DataService) {}
 
   ngOnInit(): void {
     this.dataService.getData().subscribe((data: Day[]) => {
       this.items = data;
     });
+  }
+  
+  filter(pair: string) {
+    this.dataService.getDataForPair(pair).subscribe((data: Day[]) => {
+      this.items = data;
+    });
+    this.pair = pair;
+  }
+  
+  displayAll() {
+    this.pair = null;
+    this.ngOnInit();
   }
 }

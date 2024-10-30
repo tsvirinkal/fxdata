@@ -9,6 +9,7 @@ import com.vts.fxdata.utils.TimeUtils;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class StatesView {
 
@@ -36,7 +37,7 @@ public class StatesView {
                 ChartState chState = chStates.get(tf);
 
                 if ( chState==null ) {
-                    state = new State(pair, "Pending", tf.toString(), "", null,0);
+                    state = new State(pair, "Pending", tf.toString(), "", null,0, Arrays.asList());
                 }
                 else {
                     try {
@@ -56,8 +57,14 @@ public class StatesView {
                         actionView = new Action(action.getAction(), action.getTargetPips(), TimeUtils.formatTime(action.getTime().minusMinutes(tzOffset)),
                                                 action.getPrice(), action.getStartPrice(), action.getTargetPrice());
                     }
+                    List<Long> ids = null;
+                    if (chState.getActions()!=null) {
+                        ids = chState.getActions().stream()
+                                .map(com.vts.fxdata.entities.Record::getId)
+                                .collect(Collectors.toList());
+                    }
                     state = new State(pair, chState.getState().toString(), tf.toString(),
-                            TimeUtils.formatTime(chState.getTime().minusMinutes(tzOffset)), actionView, progress);
+                            TimeUtils.formatTime(chState.getTime().minusMinutes(tzOffset)), actionView, progress, ids);
                 }
                 states.add(state);
             }

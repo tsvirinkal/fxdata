@@ -22,6 +22,11 @@ export class DataService {
     return this.http.get<any>(environment.apiUrl + tzoffset); 
   }
 
+  getDataForPair(pair: string): Observable<Day[]> {
+    console.log(environment.apiUrl);
+    return this.http.get<any>(environment.apiUrl + pair + tzoffset); 
+  }
+
   getStates(): Observable<Pair[]> {
     console.log(environment.apiUrl);
     return this.http.get<any>(environment.apiUrl + "states" + tzoffset); 

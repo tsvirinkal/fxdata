@@ -1,5 +1,7 @@
 package com.vts.fxdata.models.dto;
 
+import java.util.List;
+
 public class State {
     private String pair;
     private String state;
@@ -7,17 +9,19 @@ public class State {
     private String time;
     private Action action;
     private Integer progress;
+    private List<Long> actions;
 
     public State() {
     }
 
-    public State(String pair, String state, String timeframe, String time, Action action, Integer progress) {
+    public State(String pair, String state, String timeframe, String time, Action action, Integer progress, List<Long> ids) {
         this.pair = pair;
         this.state = state;
         this.timeframe = timeframe;
         this.time = time;
         this.action = action;
         this.progress = progress;
+        this.actions = ids;
     }
 
     public String getPair() {
@@ -66,5 +70,13 @@ public class State {
 
     public void setProgress(Integer progress) {
         this.progress = progress;
+    }
+
+    public List<Long> getActions() {
+        return actions;
+    }
+
+    public void setActions(List<Long> actions) {
+        this.actions = actions;
     }
 }
