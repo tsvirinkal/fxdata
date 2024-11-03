@@ -5,8 +5,8 @@ export interface Trade {
     pair: string;
     command: string;
     action: string;
-    createdTime: string;
+    price: number;
+    profit: number;
     openedTime: string;
-    closedTime: string;
   }
   

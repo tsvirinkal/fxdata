@@ -2,7 +2,7 @@ package com.vts.fxdata.controllers;
 
 import com.niamedtech.expo.exposerversdk.PushClient;
 import com.niamedtech.expo.exposerversdk.PushClientException;
-import com.vts.fxdata.entities.ChartState;
+import com.vts.fxdata.entities.TfState;
 import com.vts.fxdata.entities.Client;
 import com.vts.fxdata.entities.Record;
 import com.vts.fxdata.entities.Trade;
@@ -12,6 +12,8 @@ import com.vts.fxdata.notifications.NotificationServer;
 import com.vts.fxdata.repositories.*;
 import com.vts.fxdata.utils.FxUtils;
 import com.vts.fxdata.utils.TimeUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
@@ -19,15 +21,19 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.servlet.http.HttpServletRequest;
+
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.*;
+import java.util.stream.Stream;
 
 @RestController
 @RequestMapping("api/v2/fxdata")
 @CrossOrigin(origins = "http://localhost:8080")
 public class MainControllerV2 {
+    private static final Logger log = LoggerFactory.getLogger(MainControllerV2.class);
 
     @Autowired
     private final RecordService recordService;
@@ -76,6 +82,9 @@ public class MainControllerV2 {
 
     @GetMapping("/")
     public List<DayRecords> getConfirmedRecords(@RequestParam(name="tzo", required = false) Integer tzOffset) {
+//        var startPrice=1.10029;
+//        var targetPrice=1.0966;
+//        var pips = FxUtils.getPips(startPrice,targetPrice,0.00001); // TODO remove
         return recordService.getConfirmedRecords(tzOffset==null ? 0:tzOffset.intValue());
     }
 
@@ -100,15 +109,13 @@ public class MainControllerV2 {
     public ResponseEntity<String> confirmationFound(@RequestBody Confirmation request) throws PushClientException, InterruptedException {
 
         var pending = this.confirmationService.findById(request.getId());
-        if (!pending.isPresent()) {
+        if (pending==null) {
             return new ResponseEntity<>("Confirmation not found", HttpStatus.NOT_FOUND);
         }
 
         // mark the newest record as confirmed and delete the rest
-        var confirmation = pending.get();
         com.vts.fxdata.entities.Record rec = null;
-
-        var unconfirmedRecordIds = confirmation.getRecordIds();
+        var unconfirmedRecordIds = pending.getRecordIds();
         Collections.reverse(unconfirmedRecordIds);
         var iterator = unconfirmedRecordIds.iterator();
         String errorMessage = null;
@@ -119,7 +126,11 @@ public class MainControllerV2 {
                 return new ResponseEntity<>("No records found", HttpStatus.NOT_FOUND);
             }
             var recordId = iterator.next();
-            rec = this.recordService.getRecordById(recordId).get();
+            rec = this.recordService.getRecordById(recordId);
+            if (rec==null) {
+                return new ResponseEntity<>(String.format("Confirmation for a missing record ignored. id=",recordId), HttpStatus.NOT_FOUND);
+            }
+
             // check if confirmation does not clash with a trend in this timeframe
             var state = this.stateService.getState(rec.getPair(), rec.getTimeframe().ordinal());
             // TODO check the strength of the trend. Must be older than 150 candles to trust it
@@ -129,25 +140,44 @@ public class MainControllerV2 {
                 // ignore sells in a bullish trend
                 // ignore buys in a bearish trend
                 // delete all records that signal to act against the trend
-                this.recordService.deleteRecord(recordId);
-                while(iterator.hasNext()) {
-                    var otherId = iterator.next();
-                    this.recordService.deleteRecord(otherId);
-                }
+                this.recordService.deleteAll(unconfirmedRecordIds.iterator());//deleteRecord(recordId);
             } else {
-                notes = buildNotes(rec, request.getLevels(), iterator);
+                var startPrice = request.getLevels()[0];
+                var targetPrice = request.getLevels()[1];
+
+                var targetPips = FxUtils.getPips(targetPrice, request.getPrice(), request.getPoint());
+                var missedPips = FxUtils.getPips(request.getPrice(), startPrice, request.getPoint());
+                if (rec.getAction() == ActionEnum.Sell) {
+                    targetPips = FxUtils.getPips(request.getPrice(), targetPrice, request.getPoint());
+                    missedPips = FxUtils.getPips(startPrice, request.getPrice(), request.getPoint());
+                }
+
+                // ignore small waves and missed opportunities (missed pips must be 33% or less)
+                if (targetPips<40 || missedPips>targetPips/2) {
+                    log.info(String.format("Ignoring action %s on %s due to low risk/reward ratio", rec.getAction().toString(), rec.getPair()));
+                    this.recordService.deleteAll(unconfirmedRecordIds.iterator());
+                    return new ResponseEntity<>(null, HttpStatus.OK);
+                }
+
+                final var pair = rec.getPair();
+                final var price = rec.getPrice();
+                var openTrades = this.tradeService.getTrades().stream().filter(t -> t.getAction().getPair().equals(pair)).toList();
+                var nearbyTradesCount = openTrades.stream().filter(t -> Math.abs(FxUtils.getPips(t.getAction().getPrice(), price, request.getPoint()))<50).count();
+                // don't open new trades if there's an existing one within 50 pips
+                if (nearbyTradesCount>0) {
+                    log.info(String.format("Ignoring action %s on %s due to an existing trade nearby.", rec.getAction().toString(), rec.getPair()));
+                    this.recordService.deleteAll(unconfirmedRecordIds.iterator());
+                    return new ResponseEntity<>(null, HttpStatus.OK);
+                }
+
+                rec.setTargetPips(targetPips);
                 rec.setConfirmation(true);
                 rec.setPrice(request.getPrice());
-                rec.setStartPrice(request.getLevels()[0]);
-                rec.setTargetPrice(request.getLevels()[1]);
+                rec.setStartPrice(startPrice);
+                rec.setTargetPrice(targetPrice);
                 rec.setTime(LocalDateTime.now(ZoneOffset.UTC));
+                notes = buildNotes(rec, request.getLevels(), iterator);
                 rec.setNotes(notes);
-
-                var targetPips = FxUtils.getPips(rec.getTargetPrice(), request.getPrice(), request.getPoint());
-                if (rec.getAction() == ActionEnum.Sell) {
-                    targetPips = FxUtils.getPips(request.getPrice(), rec.getTargetPrice(), request.getPoint());
-                }
-                rec.setTargetPips(targetPips);
 
                 var progress = FxUtils.getProgress(request.getPrice(), rec.getStartPrice(), request.getPoint(), targetPips);
                 if (rec.getAction() == ActionEnum.Sell) {
@@ -159,17 +189,23 @@ public class MainControllerV2 {
                 this.recordService.save(rec);
 
                 // update the corresponding state
-                updateStateWithNewAction(rec, request.getPoint());
+                updateStateWithNewAction(state, rec, request.getPoint());
             }
             // remove record IDs
-            confirmation.getRecordIds().clear();
-            this.confirmationService.save(confirmation);
+            pending.getRecordIds().clear();
+            this.confirmationService.save(pending);
 
 
 
         } catch(Exception e) {
-            errorMessage = e.getMessage()+"\r\n"+notes;
-            // TODO remove
+            var sw = new StringWriter();
+            e.printStackTrace(new PrintWriter(sw));
+            errorMessage = sw+"\r\n"+notes;
+            log.error("Confirmed handler failed: ",e);
+            if (rec!=null) {
+                rec.setNotes(notes+"\r\n"+sw);
+                this.recordService.save(rec);
+            }
             pushNotifications(e.getMessage(), notes);
         }
 
@@ -178,13 +214,14 @@ public class MainControllerV2 {
         }
 
         // send out notifications
-        int count = rec.getConfirmationDelay()==null ? 0: rec.getConfirmationDelay().length();
+        int count = rec.getConfirmationDelay().isEmpty() ? 0: rec.getConfirmationDelay().length();
         String message = String.format("%s %s  (%s)", rec.getAction(),
                 rec.getPair(), rec.getPrice());
         pushNotifications(message, rec.getTimeframe() + " " + rec.getState() +
                 " ".repeat(24-count) + rec.getConfirmationDelay());
 
         this.confirmationService.deleteConfirmation(request.getId());
+        log.info(String.format("Added a new action: %s on %s.", rec.getAction().toString(), rec.getPair()));
         return new ResponseEntity<>(null, HttpStatus.OK);
     }
 
@@ -196,7 +233,7 @@ public class MainControllerV2 {
     @PostMapping("/state")
     public ResponseEntity<String> setChartState(@RequestBody State state) {
         try {
-            this.stateService.setState(ChartState.newInstance(state));
+            this.stateService.setState(TfState.newInstance(state));
         } catch (Exception e) {
             return new ResponseEntity<>(e.getMessage(), HttpStatus.BAD_REQUEST);
         }
@@ -229,9 +266,16 @@ public class MainControllerV2 {
             return new ResponseEntity<>(null, HttpStatus.BAD_REQUEST);
         }
 
-        for(ChartState state : this.stateService.getStates(request.getPair())) {
+        // manage open trades
+        final var pair = request.getPair();
+        var openTrades = this.tradeService.getTrades().stream().filter(t -> t.getAction().getPair().equals(pair)).toList();
+        handleDoublingDown(openTrades, request.getPrice(), request.getPoint());
+        handleWrongSideOfTrend(openTrades, request.getPrice(), request.getPoint());
+
+        for(TfState state : this.stateService.getStates(request.getPair())) {
             updateStateMetrics(state, request);
         }
+
         return new ResponseEntity<>(null, HttpStatus.OK);
     }
 
@@ -264,7 +308,9 @@ public class MainControllerV2 {
     @GetMapping("/trades")
     public List<com.vts.fxdata.models.dto.Trade> getTrades(@RequestParam(name="tzo", required = false) Integer tzOffset,
                                                            @RequestParam(name="act", required = false) boolean active) {
-        return TradesView.getTrades(active, this.tradeService.getTrades(), tzOffset==null ? 0: tzOffset);
+        var trades = this.tradeService.getTrades();
+        if (trades==null) trades = new ArrayList<>();
+        return TradesView.getTrades(active, trades, tzOffset==null ? 0: tzOffset);
     }
 
     @PostMapping("/trade/opened/{id}")
@@ -348,11 +394,12 @@ public class MainControllerV2 {
 
         while(iterator.hasNext()) {
             var otherId = iterator.next();
-            var r = this.recordService.getRecordById(otherId).get();
+            var rec = this.recordService.getRecordById(otherId);
+            if (rec==null) continue;
             notesBuilder.append("Deleted record ID: ")
                     .append(otherId)
                     .append(" created on ")
-                    .append(r.getTime().minusMinutes(240))
+                    .append(rec.getTime().minusMinutes(240))
                     .append("\n");
             this.recordService.deleteRecord(otherId);
         }
@@ -360,13 +407,7 @@ public class MainControllerV2 {
         return notesBuilder.toString();
     }
 
-    private void updateStateWithNewAction(com.vts.fxdata.entities.Record newAction, double point) throws PushClientException {
-        var state = this.stateService.getState(newAction.getPair(), newAction.getTimeframe().ordinal());
-        if (state==null) {
-            state = new ChartState(newAction.getPair(),newAction.getTimeframe(), newAction.getState());
-            state.setTime(newAction.getTime());
-            state.setPrice(newAction.getPrice());
-        }
+    private void updateStateWithNewAction(TfState state, com.vts.fxdata.entities.Record newAction, double point) throws PushClientException {
         boolean notificationSent = false;
 
         for(var stateAction : state.getActions()) {
@@ -377,8 +418,6 @@ public class MainControllerV2 {
                     var message = String.format("Another %s %s %s", newAction.getPair(), newAction.getTimeframe(), newAction.getAction());
                     notificationSent = pushNotifications(message, String.format("previous was (%s) at %s", stateAction.getPrice(), TimeUtils.formatTime(stateAction.getTime())));
                 }
-                // add a new action in the same direction
-                state.addAction(newAction);
             } else {
                 stateAction.setEndTime(TimeUtils.removeSeconds(LocalDateTime.now(ZoneOffset.UTC)));
                 stateAction.setExitPrice(newAction.getPrice());  // price of the new action is the price we complete the previous action
@@ -399,19 +438,19 @@ public class MainControllerV2 {
                     notificationSent = pushNotifications(message, String.format("is replacing %s on %s at %s",
                             stateAction.getAction(), stateAction.getTimeframe(), TimeUtils.formatTime(stateAction.getTime())));
                 }
-                var trade = this.tradeService.findByRecordId(stateAction.getId());
-                if (trade!=null) {
-                    if (newAction.getTimeframe()==TimeframeEnum.H1) {
-                        // TODO remove and throw if NULL. Handle NULLs only for transition.
-                        trade.setCommand(TradeEnum.Close);
-                        this.tradeService.save(trade);
+                // close existing trades
+                for(var rec : state.getActions()) {
+                    var tr = this.tradeService.findByRecordId(rec.getId());
+                    if (tr != null) {
+                        tr.setCommand(TradeEnum.Close);
+                        this.tradeService.save(tr);
                     }
                 }
-                // set new action
-                state.getActions().clear();
-                state.addAction(newAction);
             }
         }
+        // set new action
+        state.getActions().clear();
+        state.addAction(newAction);
         state.setPoint(point);
         this.stateService.save(state);
         if (newAction.getTimeframe()==TimeframeEnum.H1) {
@@ -419,7 +458,7 @@ public class MainControllerV2 {
         }
     }
 
-    private void updateStateMetrics(ChartState state, Heartbeat data) {
+    private void updateStateMetrics(TfState state, Heartbeat data) {
         var currPrice = data.getPrice();
         var point = data.getPoint();
         state.setPrice(currPrice);
@@ -427,39 +466,72 @@ public class MainControllerV2 {
         state.setUpdated(TimeUtils.removeSeconds(LocalDateTime.now(ZoneOffset.UTC)));
 
         for (var action : state.getActions()) {
-            int profit = 0;
-            var progress = 0;
-            var targetPips = action.getTargetPips();;
-            var maxDrawdown = action.getMaxDrawdown();
-            var minProgress = action.getMinProgress();
-            var maxProgress = action.getMaxProgress();
-            var actionPrice = action.getPrice();
-
-            switch (action.getAction()) {
-                case Buy:
-                    profit = FxUtils.getPips(currPrice, actionPrice, point);
-                    maxDrawdown = Math.max(-profit, maxDrawdown);
-                    progress = FxUtils.getProgress(currPrice, action.getStartPrice(), point, action.getTargetPips());
-                    targetPips = FxUtils.getPips(action.getTargetPrice(),action.getStartPrice(),point); // TODO remove
-                    break;
-                case Sell:
-                    profit = FxUtils.getPips(actionPrice, currPrice, point);
-                    maxDrawdown = Math.max(-profit, maxDrawdown);
-                    progress = FxUtils.getProgress(action.getStartPrice(), currPrice, point, action.getTargetPips());
-                    targetPips = FxUtils.getPips(action.getStartPrice(),action.getTargetPrice(),point); // TODO remove
-                    break;
-            }
-            if (progress<minProgress) {
-                action.setMinProgress(progress);
-            }
-            if (progress>maxProgress) {
-                action.setMaxProgress(progress);
-            }
-            action.setProgress(progress);
-            action.setTargetPips(targetPips); // TODO remove, added temporarily to fix old records
-            action.setProfit(profit);
-            action.setMaxDrawdown(maxDrawdown);
+           updateActionMetrics(action, currPrice, point);
         }
         this.stateService.save(state);
+    }
+
+    private void updateActionMetrics(Record action, double currPrice, double point) {
+        int profit = 0;
+        var progress = 0;
+        var targetPips = action.getTargetPips();;
+        var maxDrawdown = action.getMaxDrawdown();
+        var minProgress = action.getMinProgress();
+        var maxProgress = action.getMaxProgress();
+        var actionPrice = action.getPrice();
+
+        switch (action.getAction()) {
+            case Buy:
+                profit = FxUtils.getPips(currPrice, actionPrice, point);
+                maxDrawdown = Math.max(-profit, maxDrawdown);
+                progress = FxUtils.getProgress(currPrice, action.getStartPrice(), point, action.getTargetPips());
+                targetPips = FxUtils.getPips(action.getTargetPrice(),action.getPrice(),point); // TODO remove
+                break;
+            case Sell:
+                profit = FxUtils.getPips(actionPrice, currPrice, point);
+                maxDrawdown = Math.max(-profit, maxDrawdown);
+                progress = FxUtils.getProgress(action.getStartPrice(), currPrice, point, action.getTargetPips());
+                targetPips = FxUtils.getPips(action.getPrice(),action.getTargetPrice(), point); // TODO remove
+                break;
+        }
+        if (progress<minProgress) {
+            minProgress=progress;
+        }
+        if (progress>maxProgress) {
+            maxProgress=progress;
+        }
+        action.setProgress(progress);
+        action.setTargetPips(targetPips); // TODO remove, added temporarily to fix old records
+        action.setProfit(profit);
+        action.setMaxDrawdown(maxDrawdown);
+        action.setMinProgress(minProgress);
+        action.setMaxProgress(maxProgress);
+    }
+
+    private void handleDoublingDown(List<Trade> openTrades, double price, double point) {
+        var lt = openTrades.stream().filter(t -> t.getAction() != null && t.getAction().getProfit() < 0)
+                .max(Comparator.comparingInt(t -> t.getAction().getProfit()));
+        if (lt.isPresent() && lt.get().getAction().getProfit() < -50) {
+            // double down
+            var rec = lt.get().getAction();
+            var newRec = new Record(rec.getPair(), rec.getTimeframe(), rec.getAction(), rec.getState(), price, true);
+            newRec.setStartPrice(rec.getStartPrice());
+            newRec.setStartTime(LocalDateTime.now(ZoneOffset.UTC));
+            newRec.setTargetPrice(rec.getTargetPrice());
+            updateActionMetrics(newRec, price, point);
+
+            this.recordService.saveAndFlush(newRec);
+            this.tradeService.save(new Trade(newRec, TradeEnum.Open));
+            var state = this.stateService.getState(rec.getPair(), rec.getTimeframe().ordinal());
+            if ( state!=null ) {
+                state.getActions().add(newRec);
+                this.stateService.saveAndFlush(state);
+            }
+            log.info(String.format("Added a new action: %s on %s to double down.", rec.getAction().toString(), rec.getPair()));
+        }
+    }
+
+    private void handleWrongSideOfTrend(List<Trade> openTrades, double price, double point) {
+        // TODO var bearishTrades = openTrades.stream().filter(t -> t.getAction() != null && t.getAction().getAction()==ActionEnum.Sell);
     }
 }

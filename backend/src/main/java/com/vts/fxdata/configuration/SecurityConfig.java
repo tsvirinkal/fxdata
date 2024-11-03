@@ -26,8 +26,8 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/**").permitAll()
-                        .anyRequest().authenticated()  
+                        .requestMatchers("/media/**","/api/**").permitAll()
+                        .anyRequest().authenticated()
                 )
                 .formLogin(form -> form.permitAll())
                 .logout(logout -> logout.permitAll());
@@ -38,13 +38,12 @@ public class SecurityConfig {
 
     @Bean
     public UserDetailsService userDetailsService() {
-
-        UserDetails admin = User.withUsername(username)
+        var admin = User.withUsername(username)
                 .password(passwordEncoder().encode(password))
                 .roles("ADMIN")
                 .build();
 
-        return new InMemoryUserDetailsManager(user, admin);
+        return new InMemoryUserDetailsManager(admin);
     }
 
     @Bean

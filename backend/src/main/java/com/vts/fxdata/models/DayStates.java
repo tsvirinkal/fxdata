@@ -2,7 +2,7 @@ package com.vts.fxdata.models;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.vts.fxdata.configuration.WebConfig;
-import com.vts.fxdata.entities.ChartState;
+import com.vts.fxdata.entities.TfState;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -14,13 +14,13 @@ public class DayStates {
 
     @JsonFormat(pattern = WebConfig.DATE_PATTERN)
     private LocalDate date;
-    private List<ChartState> states;
+    private List<TfState> states;
 
     public DayStates() {
-        states = new ArrayList<ChartState>();
+        states = new ArrayList<TfState>();
     }
 
-    public DayStates(LocalDate date, List<ChartState> states) {
+    public DayStates(LocalDate date, List<TfState> states) {
         this.date = date;
         this.states = states;
     }
@@ -36,10 +36,10 @@ public class DayStates {
         this.id = date.toEpochDay();
     }
 
-    public List<ChartState> getRecords() {
+    public List<TfState> getRecords() {
         return states;
     }
-    public void setRecords(List<ChartState> states) {
+    public void setRecords(List<TfState> states) {
         this.states = states;
     }
 

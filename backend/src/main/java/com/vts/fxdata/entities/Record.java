@@ -260,7 +260,7 @@ public class Record {
     }
 
     public String getConfirmationDelay() {
-        return this.confirmationDelay;
+        return this.confirmationDelay = this.confirmationDelay==null ? "" : this.confirmationDelay;
     }
 
     public String getNotes() {
@@ -338,5 +338,13 @@ public class Record {
     public void setTargetPips(Integer targetPips) {
         this.targetPips = targetPips;
     }
+//
+//    public TfState getTfState() {
+//        return tfState;
+//    }
+//
+//    public void setTfState(TfState tfState) {
+//        this.tfState = tfState;
+//    }
 }
 

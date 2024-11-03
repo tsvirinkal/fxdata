@@ -19,7 +19,7 @@ import java.util.List;
         uniqueConstraints={
         @UniqueConstraint(columnNames = {"time", "pair", "timeframe"})
 })
-public class ChartState {
+public class TfState {
     @Id
     @SequenceGenerator(
             name = "star_sequence",
@@ -38,8 +38,8 @@ public class ChartState {
     private Double point;
 
     @OneToMany(cascade = CascadeType.ALL)
-    @JoinColumn(name = "recordId", referencedColumnName = "id")
-
+    @JoinColumn(name = "stateId", referencedColumnName = "id")
+    @OrderBy("time ASC")
     private List<Record> actions;
 
     @Column(columnDefinition= "TIMESTAMP WITH TIME ZONE")
@@ -52,7 +52,7 @@ public class ChartState {
     @JsonFormat(pattern = WebConfig.DATE_TIME_PATTERN)
     private LocalDateTime time;
 
-    public ChartState(Long id, String pair, TimeframeEnum timeframe, StateEnum state) {
+    public TfState(Long id, String pair, TimeframeEnum timeframe, StateEnum state) {
         this();
         this.Id = id;
         this.pair = pair;
@@ -60,21 +60,21 @@ public class ChartState {
         this.state = state;
     }
 
-    public ChartState(String pair, TimeframeEnum timeframe, StateEnum state) {
+    public TfState(String pair, TimeframeEnum timeframe, StateEnum state) {
         this();
         this.pair = pair;
         this.timeframe = timeframe;
         this.state = state;
     }
 
-    public ChartState() {
+    public TfState() {
         this.setTime(TimeUtils.removeSeconds(LocalDateTime.now(ZoneOffset.UTC)));
         this.price = 0.0;
         this.actions = new ArrayList<>();
     }
 
-    public static ChartState newInstance(State state) {
-        return new ChartState(state.getPair(),
+    public static TfState newInstance(State state) {
+        return new TfState(state.getPair(),
                 TimeframeEnum.valueOf(state.getTimeframe()),
                 StateEnum.valueOf(state.getState()));
     }

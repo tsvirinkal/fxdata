@@ -38,9 +38,10 @@ public class ConfirmationService {
         this.confirmationRepository.save(confirmation);
     }
 
-    public Optional<Confirmation> findById(long id)
+    public Confirmation findById(long id)
     {
-        return this.confirmationRepository.findById(id);
+        var rec= this.confirmationRepository.findById(id);
+        return rec.isPresent() ? rec.get() : null;
     }
 
     @Transactional

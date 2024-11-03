@@ -3,10 +3,8 @@ package com.vts.fxdata.repositories;
 import com.vts.fxdata.entities.Trade;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.Optional;
 
 @Service
 public class TradeService {
@@ -19,7 +17,8 @@ public class TradeService {
     }
 
     public List<Trade> getTrades() {
-        return this.tradeRepository.findAll();
+        var recs = this.tradeRepository.getTrades();
+        return recs.isPresent() ? recs.get() : null;
     }
 
     public Trade findById(Long id) {

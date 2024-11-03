@@ -1,7 +1,7 @@
 package com.vts.fxdata.controllers;
 
 import com.fasterxml.jackson.databind.JsonMappingException;
-import com.vts.fxdata.entities.ChartState;
+import com.vts.fxdata.entities.TfState;
 import com.vts.fxdata.entities.Client;
 import com.vts.fxdata.models.dto.State;
 import com.vts.fxdata.models.*;
@@ -80,9 +80,8 @@ public class MainControllerV1 {
 
     @PostMapping("/confirm/{recordId}")
     public void requestConfirmation(@PathVariable Long recordId) {
-        var record = this.recordService.getRecordById(recordId);
-        if (record.isPresent()) {
-            var rec = record.get();
+        var rec = this.recordService.getRecordById(recordId);
+        if (rec!=null) {
             var pending = getPendingConfirmations(rec.getPair()).stream().filter(c -> c.getTimeframe()==rec.getTimeframe()).findFirst();
             if (pending.isPresent()) {
                 var pendingConfirmation = pending.get();
@@ -97,24 +96,22 @@ public class MainControllerV1 {
     }
 
     @PostMapping("/confirmed")
-    public void confirmationFound(@RequestBody Confirmation request) throws PushClientException, InterruptedException {
+    public void confirmationFound(@RequestBody Confirmation request) throws PushClientException {
 
         var pending = this.confirmationService.findById(request.getId());
-        if (pending.isPresent()) {
-            var confirmation = pending.get();
-            confirmation.getRecordIds().forEach( recordId ->
+        if (pending!=null) {
+            pending.getRecordIds().forEach( recordId ->
             {
                 // mark record confirmed
-                var record = this.recordService.getRecordById(recordId);
-                if (record.isPresent()) {
-                    var rec = record.get();
+                var rec = this.recordService.getRecordById(recordId);
+                if (rec!=null) {
                     rec.setConfirmation(true);
                     this.recordService.save(rec);
                 }
             });
 
             // send out one notification per confirmation
-            pushNotifications("Confirmation found for", confirmation.getAction() + " " + confirmation.getPair() + "," + confirmation.getTimeframe());
+            pushNotifications("Confirmation found for", pending.getAction() + " " + pending.getPair() + "," + pending.getTimeframe());
 
             this.confirmationService.deleteConfirmation(request.getId());
         }
@@ -126,8 +123,8 @@ public class MainControllerV1 {
     }
 
     @PostMapping("/state")
-    public void setChartState(@RequestBody State state) throws PushClientException, InterruptedException {
-        var chartState = new ChartState(state.getPair(),
+    public void setChartState(@RequestBody State state) throws PushClientException {
+        var chartState = new TfState(state.getPair(),
                 TimeframeEnum.valueOf(state.getTimeframe()),
                 StateEnum.valueOf(state.getState()));
 

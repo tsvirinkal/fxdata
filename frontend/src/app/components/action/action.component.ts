@@ -28,7 +28,8 @@ export class ActionComponent implements OnChanges {
 
   isVisible = false;
 
-  toggleVisibility() {
+  toggleVisibility(event: Event) {
+    event.stopPropagation();
     this.isVisible = !this.isVisible;
   }
 }

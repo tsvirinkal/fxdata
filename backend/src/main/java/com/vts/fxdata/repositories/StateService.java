@@ -1,10 +1,8 @@
 package com.vts.fxdata.repositories;
 
-import com.vts.fxdata.entities.ChartState;
+import com.vts.fxdata.entities.TfState;
 import com.vts.fxdata.models.DayStates;
 import com.vts.fxdata.models.StateEnum;
-import com.vts.fxdata.models.dto.Pair;
-import com.vts.fxdata.models.StatesView;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,7 +24,7 @@ public class StateService {
         this.stateRepository = stateRepository;
     }
 
-    public boolean setState(ChartState record)
+    public boolean setState(TfState record)
     {
         var state = this.stateRepository.getState(record.getPair(), record.getTimeframe().ordinal());
         if (state==null) {
@@ -43,19 +41,19 @@ public class StateService {
         return false;
     }
 
-    public ChartState getState(String pair, int timeframe) {
+    public TfState getState(String pair, int timeframe) {
         if (pair==null)
             throw new IllegalArgumentException("Pair is null");
         return this.stateRepository.getState(pair, timeframe);
     }
 
-    public List<ChartState> getStates(String pair) {
+    public List<TfState> getStates(String pair) {
         if (pair==null)
             throw new IllegalArgumentException("Pair is null");
         return this.stateRepository.getStates(pair);
     }
 
-    public List<ChartState> getLastStates(StateEnum state) {
+    public List<TfState> getLastStates(StateEnum state) {
         return state==null ? this.stateRepository.getStates() : this.stateRepository.getStates(state.ordinal());
     }
 
@@ -64,23 +62,28 @@ public class StateService {
         this.stateRepository.deleteById(id);
     }
 
-    public void save(ChartState record) {
+    public void save(TfState record) {
         this.stateRepository.save(record);
     }
 
-    public List<ChartState> findAll() {
+    public void saveAndFlush(TfState record) {
+        this.stateRepository.saveAndFlush(record);
+    }
+
+    public List<TfState> findAll() {
         return this.stateRepository.findAll();
     }
 
-    public Optional<ChartState> getRecordById(long id) {
-        return this.stateRepository.findById(id);
+    public TfState getRecordById(long id) {
+        var rec = this.stateRepository.findById(id);
+        return rec.isPresent() ? rec.get() : null;
     }
 
-    private static List<DayStates> convertToDayStatesList(List<ChartState> records, TimeZone timezone) {
+    private static List<DayStates> convertToDayStatesList(List<TfState> records, TimeZone timezone) {
         var listDayStates = new ArrayList<DayStates>();
 
         DayStates DayStates = null;
-        for (ChartState r: records) {
+        for (TfState r: records) {
             if (r.getTime()==null) continue;
 
             var localTime = r.getTime().toInstant(ZoneOffset.UTC).atZone(timezone.toZoneId());

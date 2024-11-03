@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
 
@@ -51,12 +52,22 @@ public class RecordService {
         this.recordRepository.deleteById(id);
     }
 
+    @Transactional
+    public void deleteAll(Iterator<Long> recordIds) {
+        recordIds.forEachRemaining(id -> this.recordRepository.deleteById(id));
+    }
+
     public void save(Record record) {
         this.recordRepository.save(record);
     }
 
-    public Optional<Record> getRecordById(long id) {
-        return this.recordRepository.findById(id);
+    public void saveAndFlush(Record record) {
+        this.recordRepository.saveAndFlush(record);
+    }
+
+    public Record getRecordById(long id) {
+        var rec = this.recordRepository.findById(id);
+        return rec.isPresent() ? rec.get() : null;
     }
 
     private static List<DayRecords> convertToDayRecordsList(List<Record> records, int tzOffset) {

@@ -5,18 +5,18 @@ public class Trade {
     private String pair;
     private String command;
     private String action;
-    private String createdTime;
+    private Double price;
+    private Integer profit;
     private String openedTime;
-    private String closedTime;
 
-    public Trade(Long id, String pair, String command, String action, String createdTime, String openedTime, String closedTime) {
+    public Trade(Long id, String pair, String command, String action, Double price, Integer profit, String openedTime) {
         this.id = id;
         this.pair = pair;
         this.command = command;
         this.action = action;
-        this.createdTime = createdTime;
+        this.price = price;
+        this.profit = profit;
         this.openedTime = openedTime;
-        this.closedTime = closedTime;
     }
 
     public Long getId() {
@@ -51,14 +51,6 @@ public class Trade {
         this.action = action;
     }
 
-    public String getCreatedTime() {
-        return createdTime;
-    }
-
-    public void setCreatedTime(String createdTime) {
-        this.createdTime = createdTime;
-    }
-
     public String getOpenedTime() {
         return openedTime;
     }
@@ -67,11 +59,19 @@ public class Trade {
         this.openedTime = openedTime;
     }
 
-    public String getClosedTime() {
-        return closedTime;
+    public Double getPrice() {
+        return price;
     }
 
-    public void setClosedTime(String closedTime) {
-        this.closedTime = closedTime;
+    public void setPrice(Double price) {
+        this.price = price;
+    }
+
+    public Integer getProfit() {
+        return profit;
+    }
+
+    public void setProfit(Integer profit) {
+        this.profit = profit;
     }
 }

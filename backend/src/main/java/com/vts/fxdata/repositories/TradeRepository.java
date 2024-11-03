@@ -11,7 +11,7 @@ import java.util.Optional;
 
 @Repository
 public interface TradeRepository extends JpaRepository<Trade, Long> {
-    @Query(value = "SELECT x.* FROM trades x JOIN stars r ON x.record_id = r.id WHERE r.id = :recordId", nativeQuery = true)
+    @Query(value = "SELECT t.* FROM trades t JOIN stars r ON t.record_id = r.id WHERE r.id = :recordId", nativeQuery = true)
     Optional<Trade> findByRecordId(@Param("recordId") Long recordId);
 
     @Query(value = "SELECT * FROM trades WHERE closed_time is null ORDER BY created_time DESC LIMIT 200", nativeQuery = true)
