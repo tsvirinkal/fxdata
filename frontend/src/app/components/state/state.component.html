@@ -16,9 +16,9 @@
 </ng-template>
 <div class="cell-box" [ngbPopover]="popContent" [popoverTitle]="popTitle" triggers="mouseenter:mouseleave">
     <div class="cell" [ngClass]="getStateClass()"></div>
-    <div *ngIf="hasAction()" class="action-box text-center">
+    <div *ngIf="hasAction()" class="action-box text-center" [ngClass]="{'today': isToday()}">
         <span class="action">{{ item.action!.action }}</span>
         <span class="target">{{ item.action!.targetPips }} pips</span>
     </div>
-    <ngb-progressbar *ngIf="hasAction()" class="mb-3 progressbar" type="secondary" textType="light" [value]="item.progress" [showValue]="true" />
+    <ngb-progressbar *ngIf="hasAction()" class="mb-3 progressbar" [ngClass]="{'today': isToday()}" type="secondary" textType="light" [value]="item.progress" [showValue]="true" />
 </div>

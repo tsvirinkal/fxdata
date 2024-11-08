@@ -17,18 +17,20 @@
     </thead>
     <tbody>
       <tr *ngFor="let res of results">
-        <td class="column">{{ res.pair }},{{ res.timeframe }}</td>
-        <td class="column">{{ res.action }}</td>
-        <td class="column">{{ res.state }}</td>
-        <td class="column">{{ res.entryPrice }}</td>
-        <td class="column">{{ res.exitPrice }}</td>
-        <td class="column">{{ res.targetPips }}</td>
-        <td class="column">{{ res.profit }}</td>
-        <td class="column">{{ res.maxDrawdown }}</td>
-        <td class="column">[{{ res.minProgress }}, {{ res.maxProgress }}]</td>
-        <td class="column">{{ res.startTime }}</td>
-        <td class="column">{{ res.endTime }}</td>
-        <td class="column">{{ res.duration }}</td>
+        <td class="column" [ngClass]="{'today': isToday(res)}">{{ res.pair }},{{ res.timeframe }}</td>
+        <td class="column" [ngClass]="{'today': isToday(res)}">{{ res.action }}</td>
+        <td class="column" [ngClass]="{'today': isToday(res)}">{{ res.state }}</td>
+        <td class="column" [ngClass]="{'today': isToday(res)}">{{ res.entryPrice }}</td>
+        <td class="column" [ngClass]="{'today': isToday(res)}">{{ res.exitPrice }}</td>
+        <td class="column" [ngClass]="{'today': isToday(res)}">{{ res.targetPips }}</td>
+        <td class="column" [ngClass]="{'today': isToday(res)}">{{ res.profit }}</td>
+        <td class="column" [ngClass]="{'today': isToday(res)}">{{ res.maxDrawdown }}</td>
+        <td class="column" [ngClass]="{'today': isToday(res)}">[{{ res.minProgress }}, {{ res.maxProgress }}]</td>
+        <td class="column" [ngClass]="{'today': isToday(res)}">{{ res.startTime }}</td>
+        <td class="column" [ngClass]="{'today': isToday(res)}">{{ res.endTime }}</td>
+        <td class="column" [ngClass]="{'today': isToday(res)}">{{ res.duration }}</td>
       </tr>
+      <tr class="header" *ngIf="count>0">
+        <td colspan="2"></td><td colspan="2"><b>Total Results: {{ count }}</b></td><td colspan="2"><b>Total Profit (pips):</b></td><td><b>{{ total }}</b></td><td colspan="5"></td></tr>
     </tbody>
   </table>

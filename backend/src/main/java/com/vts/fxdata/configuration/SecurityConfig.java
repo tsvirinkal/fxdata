@@ -24,8 +24,8 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        http
-                .authorizeHttpRequests(auth -> auth
+        //http.headers(headers -> headers.cacheControl(cache -> cache.disable()));
+        http.authorizeHttpRequests(auth -> auth
                         .requestMatchers("/media/**","/api/**").permitAll()
                         .anyRequest().authenticated()
                 )

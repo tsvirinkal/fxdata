@@ -14,31 +14,45 @@ var tzoffset = "?tzo=" + offset;
   providedIn: 'root',
 })
 export class DataService {
-  
+ 
   constructor(private http: HttpClient) { }
 
   getData(): Observable<Day[]> {
-    console.log(environment.apiUrl);
     return this.http.get<any>(environment.apiUrl + tzoffset); 
   }
 
   getDataForPair(pair: string): Observable<Day[]> {
-    console.log(environment.apiUrl);
     return this.http.get<any>(environment.apiUrl + pair + tzoffset); 
   }
 
   getStates(): Observable<Pair[]> {
-    console.log(environment.apiUrl);
     return this.http.get<any>(environment.apiUrl + "states" + tzoffset); 
   }
 
   getResults(): Observable<Result[]> {
-    console.log(environment.apiUrl);
     return this.http.get<any>(environment.apiUrl + "results" + tzoffset); 
   }
 
   getTrades(): Observable<Trade[]> {
-    console.log(environment.apiUrl);
     return this.http.get<any>(environment.apiUrl + "trades" + tzoffset); 
+  }
+
+  closeTrade(id: number) {
+    console.log(environment.apiUrl + "trade/close/"+id);
+    this.http.post(environment.apiUrl + "trade/close/"+id, {}).subscribe(
+      (response) => {
+        console.log('POST response:', response);
+      },
+      (error) => {
+        console.error('POST error:', error);
+      });
+  }
+
+  getTodayString(): string {
+    const date = new Date(); 
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0'); 
+    const year = date.getFullYear();
+    return `${day}.${month}.${year}`;
   }
 }

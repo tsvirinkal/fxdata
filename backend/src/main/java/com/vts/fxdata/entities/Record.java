@@ -276,7 +276,7 @@ public class Record {
     }
 
     public LocalDateTime getStartTime() {
-        return startTime;
+        return startTime==null ? LocalDateTime.now(ZoneOffset.UTC): startTime;
     }
 
     public void setStartTime(LocalDateTime startTime) {

@@ -27,3 +27,6 @@ ul {
 .subtext {
     font-size: smaller;
 }
+.today {
+    background-color: #d6ebfc;
+}

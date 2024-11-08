@@ -313,6 +313,28 @@ public class MainControllerV2 {
         return TradesView.getTrades(active, trades, tzOffset==null ? 0: tzOffset);
     }
 
+    @PostMapping("/trade/close/{id}")
+    public ResponseEntity<String> closeTrade(@PathVariable Long id) {
+        try {
+            var trade = this.tradeService.findById(id);
+            if (trade==null) {
+                return new ResponseEntity<>("Wrong id", HttpStatus.BAD_REQUEST);
+            }
+            if (trade.getOpenedTime()==null || trade.getClosedTime()!=null) {
+                return new ResponseEntity<>("Failed to close an invalid trade.", HttpStatus.BAD_REQUEST);
+            }
+            if (trade.getAction().getTimeframe()!=TimeframeEnum.H1) {
+                return new ResponseEntity<>("Invalid timeframe in trade.", HttpStatus.BAD_REQUEST);
+            }
+            trade.setCommand(TradeEnum.Close);
+            this.tradeService.save(trade);
+            log.info(String.format("Closing trade with id=%d pair=%s, action=%s",id,trade.getAction().getPair(),trade.getAction().getAction()));
+        } catch (Exception e) {
+            return new ResponseEntity<>(e.getMessage(), HttpStatus.BAD_REQUEST);
+        }
+        return new ResponseEntity<>("closed", HttpStatus.OK);
+    }
+
     @PostMapping("/trade/opened/{id}")
     public ResponseEntity<String> acknowledgeTradeOpened(@PathVariable Long id) {
         try {
@@ -348,7 +370,9 @@ public class MainControllerV2 {
             if (trade.getAction().getTimeframe()!=TimeframeEnum.H1) {
                 return new ResponseEntity<>("Invalid timeframe in trade.", HttpStatus.BAD_REQUEST);
             }
-            trade.setClosedTime(LocalDateTime.now(ZoneOffset.UTC));
+            var closedTime = LocalDateTime.now(ZoneOffset.UTC);
+            trade.setClosedTime(closedTime);
+            trade.getAction().setEndTime(closedTime);
             this.tradeService.save(trade);
         } catch (Exception e) {
             return new ResponseEntity<>(e.getMessage(), HttpStatus.BAD_REQUEST);
@@ -484,14 +508,14 @@ public class MainControllerV2 {
             case Buy:
                 profit = FxUtils.getPips(currPrice, actionPrice, point);
                 maxDrawdown = Math.max(-profit, maxDrawdown);
-                progress = FxUtils.getProgress(currPrice, action.getStartPrice(), point, action.getTargetPips());
-                targetPips = FxUtils.getPips(action.getTargetPrice(),action.getPrice(),point); // TODO remove
+                targetPips = FxUtils.getPips(action.getTargetPrice(),action.getPrice(),point);
+                progress = FxUtils.getProgress(currPrice, action.getStartPrice(), point, targetPips);
                 break;
             case Sell:
                 profit = FxUtils.getPips(actionPrice, currPrice, point);
                 maxDrawdown = Math.max(-profit, maxDrawdown);
-                progress = FxUtils.getProgress(action.getStartPrice(), currPrice, point, action.getTargetPips());
-                targetPips = FxUtils.getPips(action.getPrice(),action.getTargetPrice(), point); // TODO remove
+                targetPips = FxUtils.getPips(action.getPrice(),action.getTargetPrice(), point);
+                progress = FxUtils.getProgress(action.getStartPrice(), currPrice, point, targetPips);
                 break;
         }
         if (progress<minProgress) {
@@ -509,7 +533,7 @@ public class MainControllerV2 {
     }
 
     private void handleDoublingDown(List<Trade> openTrades, double price, double point) {
-        var lt = openTrades.stream().filter(t -> t.getAction() != null && t.getAction().getProfit() < 0)
+        var lt = openTrades.stream().filter(t -> t.getAction() != null)
                 .max(Comparator.comparingInt(t -> t.getAction().getProfit()));
         if (lt.isPresent() && lt.get().getAction().getProfit() < -50) {
             // double down

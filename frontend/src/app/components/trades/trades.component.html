@@ -11,12 +11,16 @@
     </thead>
     <tbody>
       <tr *ngFor="let tr of trades">
-        <td class="column">{{ tr.pair }}</td>
-        <td class="column">{{ tr.command }}</td>
-        <td class="column">{{ tr.action }}</td>
-        <td class="column">{{ tr.price }}</td>
-        <td class="column">{{ tr.profit }}</td>
-        <td class="column">{{ tr.openedTime }}</td>
+        <td class="column" [ngClass]="{'today': isToday(tr)}">{{ tr.pair }}<button type="button" class="btn btn-danger" (click)="onClose(tr)">
+          <span aria-hidden="true">&times;</span>
+        </button></td>
+        <td class="column" [ngClass]="{'today': isToday(tr)}">{{ tr.command }}</td>
+        <td class="column" [ngClass]="{'today': isToday(tr)}">{{ tr.action }}</td>
+        <td class="column" [ngClass]="{'today': isToday(tr)}">{{ tr.price }}</td>
+        <td class="column" [ngClass]="{'today': isToday(tr)}">{{ tr.profit }}</td>
+        <td class="column" [ngClass]="{'today': isToday(tr)}">{{ tr.openedTime }}</td>
       </tr>
+      <tr class="header" *ngIf="count">
+        <td></td><td><b>Open Trades: {{ count }}</b></td><td></td><td><b>Total Profit (pips):</b></td><td><b>{{ total }}</b></td><td></td></tr>
     </tbody>
   </table>

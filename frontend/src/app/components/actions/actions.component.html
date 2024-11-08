@@ -4,7 +4,7 @@
     <li *ngFor="let item of items" class="text-center">
       <span class="fw-bold text-center">{{ item.date }}</span>
       <ul>
-        <li *ngFor="let record of item.records" class="list-group-item text-color" (click)="filter(record.pair)">
+        <li *ngFor="let record of item.records" class="list-group-item text-color" [ngClass]="{'today': isToday(item)}" (click)="filter(record.pair)">
           <action [item]="record"></action>
         </li>
       </ul>

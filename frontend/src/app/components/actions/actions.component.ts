@@ -14,12 +14,19 @@ import { ActionComponent } from '../action/action.component';
 export class ActionsComponent implements OnInit {
   items: Day[] = [];
   pair: string | null = null;
+  today = 'today'
+
   constructor(private dataService: DataService) {}
 
   ngOnInit(): void {
     this.dataService.getData().subscribe((data: Day[]) => {
       this.items = data;
     });
+    this.today = this.dataService.getTodayString();
+  }
+
+  isToday(result: Day): any {
+    return result.date.includes(this.today);
   }
   
   filter(pair: string) {
