@@ -30,12 +30,12 @@ public class IpWhitelistFilter implements Filter {
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
             throws IOException, ServletException {
 
-        HttpServletRequest httpRequest = (HttpServletRequest) request;
+       /*   HttpServletRequest httpRequest = (HttpServletRequest) request;
         HttpServletResponse httpResponse = (HttpServletResponse) response;
 
         String clientIp = getClientIp(httpRequest);
         log.info("Client-Ip: "+clientIp);
-        /* Check if the client IP is in the whitelist
+       Check if the client IP is in the whitelist
         if (Arrays.asList(whitelist).contains(clientIp)) {
             chain.doFilter(request, response);  // Continue request if IP is whitelisted
         } else {

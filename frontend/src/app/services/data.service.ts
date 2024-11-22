@@ -34,12 +34,11 @@ export class DataService {
   }
 
   getTrades(): Observable<Trade[]> {
-    return this.http.get<any>(environment.apiUrl + "trades" + tzoffset); 
+    return this.http.get<any>(environment.apiUrl + "trades/all" + tzoffset); 
   }
 
   closeTrade(id: number) {
-    console.log(environment.apiUrl + "trade/close/"+id);
-    this.http.post(environment.apiUrl + "trade/close/"+id, {}).subscribe(
+    this.http.post(environment.apiUrl + "trade/close", {"id": id}).subscribe(
       (response) => {
         console.log('POST response:', response);
       },

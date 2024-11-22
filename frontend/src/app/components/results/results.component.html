@@ -18,12 +18,12 @@
     <tbody>
       <tr *ngFor="let res of results">
         <td class="column" [ngClass]="{'today': isToday(res)}">{{ res.pair }},{{ res.timeframe }}</td>
-        <td class="column" [ngClass]="{'today': isToday(res)}">{{ res.action }}</td>
+        <td class="column" [ngClass]="{'today': isToday(res),'green': isBuy(res),'red': isSell(res)}">{{ res.action }}</td>
         <td class="column" [ngClass]="{'today': isToday(res)}">{{ res.state }}</td>
         <td class="column" [ngClass]="{'today': isToday(res)}">{{ res.entryPrice }}</td>
         <td class="column" [ngClass]="{'today': isToday(res)}">{{ res.exitPrice }}</td>
         <td class="column" [ngClass]="{'today': isToday(res)}">{{ res.targetPips }}</td>
-        <td class="column" [ngClass]="{'today': isToday(res)}">{{ res.profit }}</td>
+        <td class="column" [ngClass]="{'today': isToday(res),'green': isPositive(res),'red': isNegative(res)}">{{ res.profit }}</td>
         <td class="column" [ngClass]="{'today': isToday(res)}">{{ res.maxDrawdown }}</td>
         <td class="column" [ngClass]="{'today': isToday(res)}">[{{ res.minProgress }}, {{ res.maxProgress }}]</td>
         <td class="column" [ngClass]="{'today': isToday(res)}">{{ res.startTime }}</td>

@@ -2,7 +2,7 @@ import { Component, Input } from '@angular/core';
 import { NgClass, NgIf } from '@angular/common'; 
 import { State } from '../../models/state.model';
 import { NgbProgressbarModule } from '@ng-bootstrap/ng-bootstrap';
-import { Action } from "../../models/action.model";
+import { DataService } from '../../services/data.service';
 import { NgbPopoverModule } from '@ng-bootstrap/ng-bootstrap';
 
 
@@ -17,12 +17,8 @@ export class StateComponent {
   @Input() item!: State;
   today = 'today';
 
-  constructor() {
-    const date = new Date(); 
-    const day = String(date.getDate()).padStart(2, '0');
-    const month = String(date.getMonth() + 1).padStart(2, '0'); 
-    const year = date.getFullYear();
-    this.today = `${day}.${month}.${year}`;
+  constructor(private dataService: DataService) {
+    this.today = this.dataService.getTodayString();
   }
 
   isToday(): boolean {

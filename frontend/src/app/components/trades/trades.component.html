@@ -1,4 +1,5 @@
-<table class="table table-striped text-center container">
+<div class="top-div">
+  <table class="table table-striped text-center container">
     <thead>
       <tr class="headers">
         <th class="w-12 header">Pair</th>
@@ -11,16 +12,23 @@
     </thead>
     <tbody>
       <tr *ngFor="let tr of trades">
-        <td class="column" [ngClass]="{'today': isToday(tr)}">{{ tr.pair }}<button type="button" class="btn btn-danger" (click)="onClose(tr)">
+        <td class="column" [ngClass]="{'today': isToday(tr)}">{{ tr.pair }}<button *ngIf="isDeleteMode" type="button" class="btn btn-danger top-right-button" (click)="onClose(tr)">
           <span aria-hidden="true">&times;</span>
         </button></td>
         <td class="column" [ngClass]="{'today': isToday(tr)}">{{ tr.command }}</td>
-        <td class="column" [ngClass]="{'today': isToday(tr)}">{{ tr.action }}</td>
+        <td class="column" [ngClass]="{'today': isToday(tr),'green': isBuy(tr),'red': isSell(tr)}">{{ tr.action }}</td>
         <td class="column" [ngClass]="{'today': isToday(tr)}">{{ tr.price }}</td>
-        <td class="column" [ngClass]="{'today': isToday(tr)}">{{ tr.profit }}</td>
+        <td class="column" [ngClass]="{'today': isToday(tr),'green': isPositive(tr),'red': isNegative(tr)}">{{ tr.profit }}</td>
         <td class="column" [ngClass]="{'today': isToday(tr)}">{{ tr.openedTime }}</td>
       </tr>
       <tr class="header" *ngIf="count">
         <td></td><td><b>Open Trades: {{ count }}</b></td><td></td><td><b>Total Profit (pips):</b></td><td><b>{{ total }}</b></td><td></td></tr>
     </tbody>
   </table>
+  <div class="form-check">
+    <input class="form-check-input" type="checkbox" value="" id="flexCheckDefault" (change)="toggleDeleteMode($event)" >
+    <label class="form-check-label" for="flexCheckDefault">
+      Close Trades
+    </label>
+  </div>
+</div>

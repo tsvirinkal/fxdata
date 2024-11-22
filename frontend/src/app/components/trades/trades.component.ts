@@ -11,11 +11,11 @@ import { CommonModule } from '@angular/common';
   styleUrl: './trades.component.css'
 })
 export class TradesComponent implements OnInit {
-
   trades: Trade[] = [];
   total = 0;
   count = 0;
   today = 'today';
+  isDeleteMode = false;
 
   constructor(private dataService: DataService) {}
 
@@ -23,8 +23,7 @@ export class TradesComponent implements OnInit {
     // query for trades 
     this.dataService.getTrades().subscribe(trades => {
       this.trades = trades;
-      this.total = this.trades.reduce((sum, trade) => sum + trade.profit, 0);
-      this.count = this.trades.length;
+      this.calculateTotals();
     });
     this.today = this.dataService.getTodayString();
   }
@@ -32,7 +31,36 @@ export class TradesComponent implements OnInit {
   isToday(trade: Trade): any {
     return trade.openedTime.includes(this.today);
   }
+
+  isBuy(trade: Trade): any {
+    return trade.action=='Buy';
+  }
+
+  isSell(trade: Trade): any {
+    return trade.action=='Sell';
+  }
+
+  isPositive(trade: Trade): any {
+    return trade.profit>0;
+  }
+
+  isNegative(trade: Trade): any {
+    return trade.profit<0;
+  }
+  
   onClose(trade: Trade) {
     this.dataService.closeTrade(trade.id);
+    this.trades = this.trades.filter(tr => tr !== trade);
+    this.calculateTotals();
+  }
+
+  toggleDeleteMode(event: Event) {
+    const inputElement = event.target as HTMLInputElement;
+    this.isDeleteMode = inputElement.checked;
+  }
+
+  calculateTotals() {
+    this.total = this.trades.reduce((sum, trade) => sum + trade.profit, 0);
+    this.count = this.trades.length;
   }
 }

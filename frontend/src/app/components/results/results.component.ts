@@ -29,7 +29,22 @@ export class ResultsComponent implements OnInit {
     this.today = this.dataService.getTodayString();
   }
 
-  isToday(result: Result): any {
-    return result.endTime.includes(this.today);
+  isToday(r: Result): any {
+    return r.endTime.includes(this.today);
+  }
+  isBuy(r: Result): any {
+    return r.action=='Buy';
+  }
+
+  isSell(r: Result): any {
+    return r.action=='Sell';
+  }
+
+  isPositive(r: Result): any {
+    return r.profit>0;
+  }
+
+  isNegative(r: Result): any {
+    return r.profit<0;
   }
 }

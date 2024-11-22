@@ -24,11 +24,17 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        //http.headers(headers -> headers.cacheControl(cache -> cache.disable()));
+        http.headers(headers -> headers.cacheControl(cache -> cache.disable()));
         http.authorizeHttpRequests(auth -> auth
                         .requestMatchers("/media/**","/api/**").permitAll()
                         .anyRequest().authenticated()
                 )
+//                .requiresChannel(channel -> channel
+//                        .requestMatchers("/login").requiresSecure()
+//                        .requestMatchers("/api/v2/fdata/states").requiresSecure()
+//                        .requestMatchers("/api/v2/fdata/trades/all").requiresSecure()
+//                        .requestMatchers("/api/v2/fdata/results").requiresSecure()
+//                )
                 .formLogin(form -> form.permitAll())
                 .logout(logout -> logout.permitAll());
 

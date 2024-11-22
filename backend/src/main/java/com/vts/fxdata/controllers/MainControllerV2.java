@@ -12,6 +12,8 @@ import com.vts.fxdata.notifications.NotificationServer;
 import com.vts.fxdata.repositories.*;
 import com.vts.fxdata.utils.FxUtils;
 import com.vts.fxdata.utils.TimeUtils;
+import org.apache.commons.lang3.builder.ToStringBuilder;
+import org.apache.commons.lang3.builder.ToStringStyle;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,7 +29,6 @@ import java.io.StringWriter;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.*;
-import java.util.stream.Stream;
 
 @RestController
 @RequestMapping("api/v2/fxdata")
@@ -65,6 +66,9 @@ public class MainControllerV2 {
 
     @PostMapping("/addrecord")
     public ResponseEntity<String> addRecord(@RequestBody com.vts.fxdata.models.dto.Record request) throws PushClientException, InterruptedException {
+        var dto = ToStringBuilder.reflectionToString(request, ToStringStyle.JSON_STYLE);
+        log.info(String.format("/addrecord body=%s",dto));
+
         try {
             var rec = new Record(request.getPair(),
                     TimeframeEnum.valueOf(request.getTimeframe()),
@@ -82,9 +86,6 @@ public class MainControllerV2 {
 
     @GetMapping("/")
     public List<DayRecords> getConfirmedRecords(@RequestParam(name="tzo", required = false) Integer tzOffset) {
-//        var startPrice=1.10029;
-//        var targetPrice=1.0966;
-//        var pips = FxUtils.getPips(startPrice,targetPrice,0.00001); // TODO remove
         return recordService.getConfirmedRecords(tzOffset==null ? 0:tzOffset.intValue());
     }
 
@@ -112,6 +113,8 @@ public class MainControllerV2 {
         if (pending==null) {
             return new ResponseEntity<>("Confirmation not found", HttpStatus.NOT_FOUND);
         }
+        var dto = ToStringBuilder.reflectionToString(request, ToStringStyle.JSON_STYLE);
+        log.info(String.format("/confirmed body=%s",dto));
 
         // mark the newest record as confirmed and delete the rest
         com.vts.fxdata.entities.Record rec = null;
@@ -120,16 +123,29 @@ public class MainControllerV2 {
         var iterator = unconfirmedRecordIds.iterator();
         String errorMessage = null;
         String notes = null;
-
+        log.info("/confirmed, id="+request.getId()+", unconfirmedRecordIds size="+unconfirmedRecordIds.size());
         try {
             if (!iterator.hasNext()) {
+                log.info("/confirmed, id="+request.getId()+", No records found");
                 return new ResponseEntity<>("No records found", HttpStatus.NOT_FOUND);
             }
-            var recordId = iterator.next();
-            rec = this.recordService.getRecordById(recordId);
-            if (rec==null) {
-                return new ResponseEntity<>(String.format("Confirmation for a missing record ignored. id=",recordId), HttpStatus.NOT_FOUND);
+
+            while (rec==null && iterator.hasNext()) {
+                var recordId = iterator.next();
+                log.info("/confirmed, id="+request.getId()+", recordId="+recordId);
+                rec = this.recordService.getRecordById(recordId);
+                if (rec==null) {
+                    log.info("/confirmed, id=" + request.getId() + ", missing record skipped");
+                }
             }
+            if (rec==null) {
+                log.info("/confirmed, id="+request.getId()+", all records are missing, signal ignored");
+                pending.getRecordIds().clear();
+                log.info("/confirmed, id="+request.getId()+", cleared confirmation record");
+                this.confirmationService.deleteConfirmation(request.getId());
+                return new ResponseEntity<>(String.format("Confirmation for a missing record ignored. id=",request.getId()), HttpStatus.NOT_FOUND);
+            }
+            log.info("/confirmed, id="+request.getId()+", record retrieved");
 
             // check if confirmation does not clash with a trend in this timeframe
             var state = this.stateService.getState(rec.getPair(), rec.getTimeframe().ordinal());
@@ -139,9 +155,11 @@ public class MainControllerV2 {
                 state.getState() == StateEnum.Bearish && rec.getAction() == ActionEnum.Buy) {
                 // ignore sells in a bullish trend
                 // ignore buys in a bearish trend
+                log.info("/confirmed, id="+request.getId()+", ignoring sells or buys, deleting unconfirmed records");
                 // delete all records that signal to act against the trend
                 this.recordService.deleteAll(unconfirmedRecordIds.iterator());//deleteRecord(recordId);
             } else {
+                log.info("/confirmed, id="+request.getId()+", calculate targets and pips");
                 var startPrice = request.getLevels()[0];
                 var targetPrice = request.getLevels()[1];
 
@@ -151,7 +169,7 @@ public class MainControllerV2 {
                     targetPips = FxUtils.getPips(request.getPrice(), targetPrice, request.getPoint());
                     missedPips = FxUtils.getPips(startPrice, request.getPrice(), request.getPoint());
                 }
-
+                log.info("/confirmed, id="+request.getId()+", targetPips="+targetPips);
                 // ignore small waves and missed opportunities (missed pips must be 33% or less)
                 if (targetPips<40 || missedPips>targetPips/2) {
                     log.info(String.format("Ignoring action %s on %s due to low risk/reward ratio", rec.getAction().toString(), rec.getPair()));
@@ -163,6 +181,7 @@ public class MainControllerV2 {
                 final var price = rec.getPrice();
                 var openTrades = this.tradeService.getTrades().stream().filter(t -> t.getAction().getPair().equals(pair)).toList();
                 var nearbyTradesCount = openTrades.stream().filter(t -> Math.abs(FxUtils.getPips(t.getAction().getPrice(), price, request.getPoint()))<50).count();
+                log.info("/confirmed, id="+request.getId()+", nearbyTradesCount="+nearbyTradesCount);
                 // don't open new trades if there's an existing one within 50 pips
                 if (nearbyTradesCount>0) {
                     log.info(String.format("Ignoring action %s on %s due to an existing trade nearby.", rec.getAction().toString(), rec.getPair()));
@@ -176,9 +195,10 @@ public class MainControllerV2 {
                 rec.setStartPrice(startPrice);
                 rec.setTargetPrice(targetPrice);
                 rec.setTime(LocalDateTime.now(ZoneOffset.UTC));
+                rec.setState(state.getState());     // update the state to the current one
                 notes = buildNotes(rec, request.getLevels(), iterator);
                 rec.setNotes(notes);
-
+                log.info("/confirmed, id="+request.getId()+", built notes="+notes);
                 var progress = FxUtils.getProgress(request.getPrice(), rec.getStartPrice(), request.getPoint(), targetPips);
                 if (rec.getAction() == ActionEnum.Sell) {
                     progress = FxUtils.getProgress(rec.getStartPrice(), request.getPrice(), request.getPoint(), targetPips);
@@ -187,12 +207,14 @@ public class MainControllerV2 {
                 rec.setMinProgress(progress);
                 rec.setMaxProgress(progress);
                 this.recordService.save(rec);
-
+                log.info("/confirmed, id="+request.getId()+", saved new record");
                 // update the corresponding state
                 updateStateWithNewAction(state, rec, request.getPoint());
+                log.info("/confirmed, id="+request.getId()+", update state with wew action");
             }
             // remove record IDs
             pending.getRecordIds().clear();
+            log.info("/confirmed, id="+request.getId()+", cleared confirmation record");
             this.confirmationService.save(pending);
 
 
@@ -305,42 +327,67 @@ public class MainControllerV2 {
         return results;
     }
 
-    @GetMapping("/trades")
-    public List<com.vts.fxdata.models.dto.Trade> getTrades(@RequestParam(name="tzo", required = false) Integer tzOffset,
-                                                           @RequestParam(name="act", required = false) boolean active) {
+    @GetMapping("/trades/all")
+    public List<com.vts.fxdata.models.dto.Trade> getAllTrades(@RequestParam(name="tzo", required = false) Integer tzOffset) {
         var trades = this.tradeService.getTrades();
         if (trades==null) trades = new ArrayList<>();
-        return TradesView.getTrades(active, trades, tzOffset==null ? 0: tzOffset);
+        return TradesView.getTrades(false, trades, tzOffset==null ? 0: tzOffset);
     }
 
-    @PostMapping("/trade/close/{id}")
-    public ResponseEntity<String> closeTrade(@PathVariable Long id) {
+    @GetMapping("/trades/active")
+    public List<com.vts.fxdata.models.dto.Trade> getActiveTrades() {
+        var trades = this.tradeService.getTrades();
+        if (trades==null) trades = new ArrayList<>();
+        return TradesView.getTrades(true, trades, 0);
+    }
+
+    @PostMapping("/trade/close")
+    public ResponseEntity<String> closeTrade(@RequestBody TradeAck tradeAck) {
+        if (tradeAck==null || tradeAck.getId()<=0) {
+            return new ResponseEntity<>(null, HttpStatus.BAD_REQUEST);
+        }
+        var dto = ToStringBuilder.reflectionToString(tradeAck, ToStringStyle.JSON_STYLE);
+        log.info(String.format("/trade/close, body=%s",dto));
         try {
-            var trade = this.tradeService.findById(id);
+            var trade = this.tradeService.findById(tradeAck.getId());
             if (trade==null) {
-                return new ResponseEntity<>("Wrong id", HttpStatus.BAD_REQUEST);
+                return new ResponseEntity<>("Invalid id", HttpStatus.BAD_REQUEST);
             }
             if (trade.getOpenedTime()==null || trade.getClosedTime()!=null) {
                 return new ResponseEntity<>("Failed to close an invalid trade.", HttpStatus.BAD_REQUEST);
             }
-            if (trade.getAction().getTimeframe()!=TimeframeEnum.H1) {
+            var action = trade.getAction();
+            if (action.getTimeframe()!=TimeframeEnum.H1) {
                 return new ResponseEntity<>("Invalid timeframe in trade.", HttpStatus.BAD_REQUEST);
             }
+            var state = this.stateService.getState(action.getPair(), TimeframeEnum.H1.ordinal());
+            if (state.getActions().remove(trade.getAction())) {
+                this.stateService.save(state);
+            } else {
+                throw new RuntimeException(String.format("Trade to close references an action that is missing in the state. Trade ID=%d",tradeAck.getId()));
+            }
+            action.setEndTime(LocalDateTime.now(ZoneOffset.UTC));
+            action.setExitPrice(state.getPrice());
             trade.setCommand(TradeEnum.Close);
             this.tradeService.save(trade);
-            log.info(String.format("Closing trade with id=%d pair=%s, action=%s",id,trade.getAction().getPair(),trade.getAction().getAction()));
+            log.info(String.format("Closing trade with id=%d pair=%s, action=%s",tradeAck.getId(),trade.getAction().getPair(),trade.getAction().getAction()));
         } catch (Exception e) {
             return new ResponseEntity<>(e.getMessage(), HttpStatus.BAD_REQUEST);
         }
         return new ResponseEntity<>("closed", HttpStatus.OK);
     }
 
-    @PostMapping("/trade/opened/{id}")
-    public ResponseEntity<String> acknowledgeTradeOpened(@PathVariable Long id) {
+    @PostMapping("/trade/opened")
+    public ResponseEntity<String> acknowledgeTradeOpened(@RequestBody TradeAck tradeAck) {
+        if (tradeAck==null || tradeAck.getId()<=0 || tradeAck.getPrice()==null || tradeAck.getPrice()<0) {
+            return new ResponseEntity<>(null, HttpStatus.BAD_REQUEST);
+        }
+        var dto = ToStringBuilder.reflectionToString(tradeAck, ToStringStyle.JSON_STYLE);
+        log.info(String.format("/trade/opened, body=%s",dto));
         try {
-            var trade = this.tradeService.findById(id);
+            var trade = this.tradeService.findById(tradeAck.getId());
             if (trade==null) {
-                return new ResponseEntity<>("Wrong id", HttpStatus.BAD_REQUEST);
+                return new ResponseEntity<>("Invalid id", HttpStatus.BAD_REQUEST);
             }
             if (trade.getOpenedTime()!=null) {
                 return new ResponseEntity<>("Failed to open an invalid trade.", HttpStatus.BAD_REQUEST);
@@ -349,6 +396,7 @@ public class MainControllerV2 {
                 return new ResponseEntity<>("Invalid timeframe in trade.", HttpStatus.BAD_REQUEST);
             }
             trade.setOpenedTime(LocalDateTime.now(ZoneOffset.UTC));
+            trade.getAction().setPrice(tradeAck.getPrice());
             trade.setCommand(TradeEnum.Wait);
             this.tradeService.save(trade);
         } catch (Exception e) {
@@ -357,12 +405,17 @@ public class MainControllerV2 {
         return new ResponseEntity<>(null, HttpStatus.OK);
     }
 
-    @PostMapping("/trade/closed/{id}")
-    public ResponseEntity<String> acknowledgeTradeClosed(@PathVariable Long id) {
+    @PostMapping("/trade/closed")
+    public ResponseEntity<String> acknowledgeTradeClosed(@RequestBody TradeAck tradeAck) {
+        if (tradeAck==null || tradeAck.getId()<=0 || tradeAck.getPrice()==null || tradeAck.getPrice()<0) {
+            return new ResponseEntity<>(null, HttpStatus.BAD_REQUEST);
+        }
+        var dto = ToStringBuilder.reflectionToString(tradeAck, ToStringStyle.JSON_STYLE);
+        log.info(String.format("/trade/close, body=%s",dto));
         try {
-            var trade = this.tradeService.findById(id);
+            var trade = this.tradeService.findById(tradeAck.getId());
             if (trade==null) {
-                return new ResponseEntity<>("Wrong id", HttpStatus.BAD_REQUEST);
+                return new ResponseEntity<>("Invalid id", HttpStatus.BAD_REQUEST);
             }
             if (trade.getOpenedTime()==null || trade.getClosedTime()!=null) {
                 return new ResponseEntity<>("Failed to close an invalid trade.", HttpStatus.BAD_REQUEST);
@@ -373,6 +426,7 @@ public class MainControllerV2 {
             var closedTime = LocalDateTime.now(ZoneOffset.UTC);
             trade.setClosedTime(closedTime);
             trade.getAction().setEndTime(closedTime);
+            trade.getAction().setExitPrice(tradeAck.getPrice());
             this.tradeService.save(trade);
         } catch (Exception e) {
             return new ResponseEntity<>(e.getMessage(), HttpStatus.BAD_REQUEST);
@@ -433,9 +487,11 @@ public class MainControllerV2 {
 
     private void updateStateWithNewAction(TfState state, com.vts.fxdata.entities.Record newAction, double point) throws PushClientException {
         boolean notificationSent = false;
-
+        log.info("/confirmed/updateStateWithNewAction, recordId="+newAction.getId()+", state has actions: "+state.getActions().size());
         for(var stateAction : state.getActions()) {
+            log.info("    /confirmed/updateStateWithNewAction, actionId="+newAction.getId());
             if (stateAction.getAction() == newAction.getAction()) {
+                log.info("    /confirmed/updateStateWithNewAction, actionId="+newAction.getId()+", another action in the same direction");
                 // we've got another action in the same direction
                 // will use the new action, the previous ones will have no end time
                 if (!notificationSent) {
@@ -443,6 +499,7 @@ public class MainControllerV2 {
                     notificationSent = pushNotifications(message, String.format("previous was (%s) at %s", stateAction.getPrice(), TimeUtils.formatTime(stateAction.getTime())));
                 }
             } else {
+                log.info("    /confirmed/updateStateWithNewAction, actionId="+newAction.getId()+", opposite direction, closing existing action");
                 stateAction.setEndTime(TimeUtils.removeSeconds(LocalDateTime.now(ZoneOffset.UTC)));
                 stateAction.setExitPrice(newAction.getPrice());  // price of the new action is the price we complete the previous action
                                                                 // TODO this works for range, what about trend?
@@ -462,23 +519,25 @@ public class MainControllerV2 {
                     notificationSent = pushNotifications(message, String.format("is replacing %s on %s at %s",
                             stateAction.getAction(), stateAction.getTimeframe(), TimeUtils.formatTime(stateAction.getTime())));
                 }
-                // close existing trades
-                for(var rec : state.getActions()) {
-                    var tr = this.tradeService.findByRecordId(rec.getId());
-                    if (tr != null) {
-                        tr.setCommand(TradeEnum.Close);
-                        this.tradeService.save(tr);
-                    }
+                // close existing trade
+                var trade = this.tradeService.findByRecordId(stateAction.getId());
+                if (trade != null) { // trades for actions from H4 won't be found
+                    log.info("    /confirmed/updateStateWithNewAction, actionId="+newAction.getId()+", opposite direction, found Trade for existing action, issuing Close command");
+                    trade.setCommand(TradeEnum.Close);
+                    this.tradeService.save(trade);
                 }
             }
         }
+        log.info("    /confirmed/updateStateWithNewAction, actionId="+newAction.getId()+", clearing existing state actions, adding the new one");
         // set new action
         state.getActions().clear();
         state.addAction(newAction);
         state.setPoint(point);
         this.stateService.save(state);
+        log.info("    /confirmed/updateStateWithNewAction, actionId="+newAction.getId()+", saved state");
         if (newAction.getTimeframe()==TimeframeEnum.H1) {
             this.tradeService.save(new Trade(newAction, TradeEnum.Open));
+            log.info("    /confirmed/updateStateWithNewAction, actionId="+newAction.getId()+", issued a new Open trade command");
         }
     }
 

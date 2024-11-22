@@ -1,6 +1,10 @@
+.top-div {
+    display: flex;
+    align-items: normal;
+}
 .container {
     margin: 9px;
-    width: 100%;
+    width: 930px;
     min-width: 800px;
 }
 .headers {
@@ -15,6 +19,7 @@
     white-space: wrap;
 }
 .column {
+    position: relative;
     border: 1px solid #b1b1b1;
     padding: 5px;
     white-space: nowrap;
@@ -22,3 +27,28 @@
 .today {
     background-color: #d6ebfc;
 }
+.top-right-button {
+    position: absolute; 
+    top: 9px; 
+    right: 6px; 
+    padding: 0px 0px;
+    cursor: pointer;
+    --bs-btn-bg: #e18282;
+    --bs-btn-border-color: #9a9999;
+    --bs-btn-hover-bg: #dc2336;
+    --bs-btn-hover-color: #000;
+  }
+  .btn {
+    display: flex;
+    span {
+        font-size: 20px;
+        margin-top: -4px;
+        line-height: 18px;
+    }
+  }
+  .green {
+    background-color: #d6fce4;
+  }
+  .red {
+    background-color: #fac9c9;
+  }
