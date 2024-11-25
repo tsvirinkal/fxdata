@@ -47,4 +47,10 @@ export class ResultsComponent implements OnInit {
   isNegative(r: Result): any {
     return r.profit<0;
   }
+  getStateClass(r: Result): any {
+    return {
+      'today': this.isToday(r),
+      [r.state.toLowerCase()]: true
+    };
+  }
 }

@@ -28,3 +28,23 @@
 .red {
     background-color: #fac9c9;
 }
+.bullish {
+    background-image: url('../../../assets/bullish.png');
+    background-position: right; 
+    background-size: 150px;
+}
+.bearish {
+    background-image: url('../../../assets/bearish.png');
+    background-position: left; 
+    background-size: 150px;
+}
+.range {
+    background-image: url('../../../assets/range.png');
+    background-position: left; 
+    background-size: 150px;
+}
+.arrow {
+    height: 22px;
+    padding: 0px;
+    margin-top: -6px;
+}

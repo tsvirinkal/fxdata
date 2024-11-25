@@ -52,3 +52,8 @@
   .red {
     background-color: #fac9c9;
   }
+  .arrow {
+    height: 22px;
+    padding: 0px;
+    margin-top: -6px;
+}
