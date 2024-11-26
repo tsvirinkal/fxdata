@@ -16,7 +16,7 @@
           <span aria-hidden="true">&times;</span>
         </button></td>
         <td class="column" [ngClass]="{'today': isToday(tr)}">{{ tr.command }}</td>
-        <td class="column" [ngClass]="{'today': isToday(tr)}"><img [src]="isBuy(tr) ? 'assets/up-arrow.png' : 'assets/down-arrow.png'" class="arrow"/></td>
+        <td class="column" [ngClass]="{'today': isToday(tr)}">{{ tr.action }}<img [src]="isBuy(tr) ? 'assets/up-arrow.png' : 'assets/down-arrow.png'" class="arrow"/></td>
         <td class="column" [ngClass]="{'today': isToday(tr)}">{{ tr.price }}</td>
         <td class="column" [ngClass]="{'today': isToday(tr),'green': isPositive(tr),'red': isNegative(tr)}">{{ tr.profit }}</td>
         <td class="column" [ngClass]="{'today': isToday(tr)}">{{ tr.openedTime }}</td>

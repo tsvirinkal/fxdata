@@ -18,7 +18,7 @@
     <tbody>
       <tr *ngFor="let res of results">
         <td class="column" [ngClass]="{'today': isToday(res)}">{{ res.pair }},{{ res.timeframe }}</td>
-        <td class="column" [ngClass]="{'today': isToday(res)}"><img [src]="isBuy(res) ? 'assets/up-arrow.png' : 'assets/down-arrow.png'" class="arrow"/></td>
+        <td class="column" [ngClass]="{'today': isToday(res)}">{{ res.action }}<img [src]="isBuy(res) ? 'assets/up-arrow.png' : 'assets/down-arrow.png'" class="arrow"/></td>
         <td class="column" [ngClass]="getStateClass(res)"></td>
         <td class="column" [ngClass]="{'today': isToday(res)}">{{ res.entryPrice }}</td>
         <td class="column" [ngClass]="{'today': isToday(res)}">{{ res.exitPrice }}</td>
