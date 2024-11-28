@@ -155,19 +155,20 @@ public class MainControllerV2 {
                 state.getState() == StateEnum.Bearish && rec.getAction() == ActionEnum.Buy) {
                 // ignore sells in a bullish trend
                 // ignore buys in a bearish trend
-                log.info("/confirmed, id="+request.getId()+", ignoring sells or buys, deleting unconfirmed records");
+                log.info("/confirmed, id="+request.getId()+", state is in the opposite direction, ignoring the action, deleting unconfirmed records");
                 // delete all records that signal to act against the trend
-                this.recordService.deleteAll(unconfirmedRecordIds.iterator());//deleteRecord(recordId);
+                this.recordService.deleteAll(unconfirmedRecordIds.iterator());
+                return new ResponseEntity<>(null, HttpStatus.NOT_ACCEPTABLE);
             } else {
                 log.info("/confirmed, id="+request.getId()+", calculate targets and pips");
                 var startPrice = request.getLevels()[0];
                 var targetPrice = request.getLevels()[1];
 
-                var targetPips = FxUtils.getPips(targetPrice, request.getPrice(), request.getPoint());
-                var missedPips = FxUtils.getPips(request.getPrice(), startPrice, request.getPoint());
+                var targetPips = FxUtils.getPips(targetPrice, request.getPrice(), state.getPoint());
+                var missedPips = FxUtils.getPips(request.getPrice(), startPrice, state.getPoint());
                 if (rec.getAction() == ActionEnum.Sell) {
-                    targetPips = FxUtils.getPips(request.getPrice(), targetPrice, request.getPoint());
-                    missedPips = FxUtils.getPips(startPrice, request.getPrice(), request.getPoint());
+                    targetPips = FxUtils.getPips(request.getPrice(), targetPrice, state.getPoint());
+                    missedPips = FxUtils.getPips(startPrice, request.getPrice(), state.getPoint());
                 }
                 log.info("/confirmed, id="+request.getId()+", targetPips="+targetPips);
                 // ignore small waves and missed opportunities (missed pips must be 33% or less)
@@ -180,7 +181,7 @@ public class MainControllerV2 {
                 final var pair = rec.getPair();
                 final var price = rec.getPrice();
                 var openTrades = this.tradeService.getTrades().stream().filter(t -> t.getAction().getPair().equals(pair)).toList();
-                var nearbyTradesCount = openTrades.stream().filter(t -> Math.abs(FxUtils.getPips(t.getAction().getPrice(), price, request.getPoint()))<50).count();
+                var nearbyTradesCount = openTrades.stream().filter(t -> Math.abs(FxUtils.getPips(t.getAction().getPrice(), price, state.getPoint()))<50).count();
                 log.info("/confirmed, id="+request.getId()+", nearbyTradesCount="+nearbyTradesCount);
                 // don't open new trades if there's an existing one within 50 pips
                 if (nearbyTradesCount>0) {
@@ -199,9 +200,9 @@ public class MainControllerV2 {
                 notes = buildNotes(rec, request.getLevels(), iterator);
                 rec.setNotes(notes);
                 log.info("/confirmed, id="+request.getId()+", built notes="+notes);
-                var progress = FxUtils.getProgress(request.getPrice(), rec.getStartPrice(), request.getPoint(), targetPips);
+                var progress = FxUtils.getProgress(request.getPrice(), rec.getStartPrice(), state.getPoint(), targetPips);
                 if (rec.getAction() == ActionEnum.Sell) {
-                    progress = FxUtils.getProgress(rec.getStartPrice(), request.getPrice(), request.getPoint(), targetPips);
+                    progress = FxUtils.getProgress(rec.getStartPrice(), request.getPrice(), state.getPoint(), targetPips);
                 }
                 rec.setProgress(progress);
                 rec.setMinProgress(progress);
@@ -209,7 +210,7 @@ public class MainControllerV2 {
                 this.recordService.save(rec);
                 log.info("/confirmed, id="+request.getId()+", saved new record");
                 // update the corresponding state
-                updateStateWithNewAction(state, rec, request.getPoint());
+                updateStateWithNewAction(state, rec, state.getPoint());
                 log.info("/confirmed, id="+request.getId()+", update state with wew action");
             }
             // remove record IDs

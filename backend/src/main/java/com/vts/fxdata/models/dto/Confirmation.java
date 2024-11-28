@@ -21,12 +21,4 @@ public class Confirmation {
     public void setLevels(double[] levels) {
         this.levels = levels;
     }
-
-    public double getPoint() {
-        return point;
-    }
-
-    public void setPoint(double point) {
-        this.point = point;
-    }
 }
