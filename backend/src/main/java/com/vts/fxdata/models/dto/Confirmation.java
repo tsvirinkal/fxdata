@@ -4,7 +4,6 @@ public class Confirmation {
     private long id;
     private double price;
     private double[] levels;
-    private double point;
 
     public long getId() { return id; }
 

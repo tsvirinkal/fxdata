@@ -109,131 +109,67 @@ public class MainControllerV2 {
     @PostMapping("/confirmed")
     public ResponseEntity<String> confirmationFound(@RequestBody Confirmation request) throws PushClientException, InterruptedException {
 
-        var pending = this.confirmationService.findById(request.getId());
-        if (pending==null) {
+        // get confirmation record
+        var confirmationRec = this.confirmationService.findById(request.getId());
+        if (confirmationRec==null) {
             return new ResponseEntity<>("Confirmation not found", HttpStatus.NOT_FOUND);
         }
+
+        // debug output
         var dto = ToStringBuilder.reflectionToString(request, ToStringStyle.JSON_STYLE);
         log.info(String.format("/confirmed body=%s",dto));
 
-        // mark the newest record as confirmed and delete the rest
-        com.vts.fxdata.entities.Record rec = null;
-        var unconfirmedRecordIds = pending.getRecordIds();
-        Collections.reverse(unconfirmedRecordIds);
-        var iterator = unconfirmedRecordIds.iterator();
-        String errorMessage = null;
-        String notes = null;
-        log.info("/confirmed, id="+request.getId()+", unconfirmedRecordIds size="+unconfirmedRecordIds.size());
+        Record rec = null;
+
         try {
-            if (!iterator.hasNext()) {
-                log.info("/confirmed, id="+request.getId()+", No records found");
-                return new ResponseEntity<>("No records found", HttpStatus.NOT_FOUND);
-            }
-
-            while (rec==null && iterator.hasNext()) {
-                var recordId = iterator.next();
-                log.info("/confirmed, id="+request.getId()+", recordId="+recordId);
-                rec = this.recordService.getRecordById(recordId);
-                if (rec==null) {
-                    log.info("/confirmed, id=" + request.getId() + ", missing record skipped");
-                }
-            }
+            // mark the newest record as confirmed and delete the rest
+            rec = handleConfirmation(confirmationRec);
             if (rec==null) {
-                log.info("/confirmed, id="+request.getId()+", all records are missing, signal ignored");
-                pending.getRecordIds().clear();
-                log.info("/confirmed, id="+request.getId()+", cleared confirmation record");
-                this.confirmationService.deleteConfirmation(request.getId());
-                return new ResponseEntity<>(String.format("Confirmation for a missing record ignored. id=",request.getId()), HttpStatus.NOT_FOUND);
+                return new ResponseEntity<>("Confirmation is ignored as record wasn't found.", HttpStatus.NOT_FOUND);
             }
-            log.info("/confirmed, id="+request.getId()+", record retrieved");
+            log.info("/confirmed, id="+request.getId()+", record retrieved, recId="+rec.getId());
 
-            // check if confirmation does not clash with a trend in this timeframe
+            // retrieve the pair's state in this timeframe
             var state = this.stateService.getState(rec.getPair(), rec.getTimeframe().ordinal());
             // TODO check the strength of the trend. Must be older than 150 candles to trust it
-            // TODO and ignore opposite signals
-            if (state.getState() == StateEnum.Bullish && rec.getAction() == ActionEnum.Sell ||
-                state.getState() == StateEnum.Bearish && rec.getAction() == ActionEnum.Buy) {
-                // ignore sells in a bullish trend
-                // ignore buys in a bearish trend
-                log.info("/confirmed, id="+request.getId()+", state is in the opposite direction, ignoring the action, deleting unconfirmed records");
+
+            // check if confirmation does not clash with a trend in this timeframe
+            if (checkActionMatchesState(rec, state)) {
+                log.info("/confirmed, recId="+rec.getId()+", state is in the opposite direction, ignoring the action, deleting unconfirmed records");
                 // delete all records that signal to act against the trend
-                this.recordService.deleteAll(unconfirmedRecordIds.iterator());
+                this.recordService.deleteAll(confirmationRec.getRecordIds().iterator());
                 return new ResponseEntity<>(null, HttpStatus.NOT_ACCEPTABLE);
-            } else {
-                log.info("/confirmed, id="+request.getId()+", calculate targets and pips");
-                var startPrice = request.getLevels()[0];
-                var targetPrice = request.getLevels()[1];
-
-                var targetPips = FxUtils.getPips(targetPrice, request.getPrice(), state.getPoint());
-                var missedPips = FxUtils.getPips(request.getPrice(), startPrice, state.getPoint());
-                if (rec.getAction() == ActionEnum.Sell) {
-                    targetPips = FxUtils.getPips(request.getPrice(), targetPrice, state.getPoint());
-                    missedPips = FxUtils.getPips(startPrice, request.getPrice(), state.getPoint());
-                }
-                log.info("/confirmed, id="+request.getId()+", targetPips="+targetPips);
-                // ignore small waves and missed opportunities (missed pips must be 33% or less)
-                if (targetPips<40 || missedPips>targetPips/2) {
-                    log.info(String.format("Ignoring action %s on %s due to low risk/reward ratio", rec.getAction().toString(), rec.getPair()));
-                    this.recordService.deleteAll(unconfirmedRecordIds.iterator());
-                    return new ResponseEntity<>(null, HttpStatus.OK);
-                }
-
-                final var pair = rec.getPair();
-                final var price = rec.getPrice();
-                var openTrades = this.tradeService.getTrades().stream().filter(t -> t.getAction().getPair().equals(pair)).toList();
-                var nearbyTradesCount = openTrades.stream().filter(t -> Math.abs(FxUtils.getPips(t.getAction().getPrice(), price, state.getPoint()))<50).count();
-                log.info("/confirmed, id="+request.getId()+", nearbyTradesCount="+nearbyTradesCount);
-                // don't open new trades if there's an existing one within 50 pips
-                if (nearbyTradesCount>0) {
-                    log.info(String.format("Ignoring action %s on %s due to an existing trade nearby.", rec.getAction().toString(), rec.getPair()));
-                    this.recordService.deleteAll(unconfirmedRecordIds.iterator());
-                    return new ResponseEntity<>(null, HttpStatus.OK);
-                }
-
-                rec.setTargetPips(targetPips);
-                rec.setConfirmation(true);
-                rec.setPrice(request.getPrice());
-                rec.setStartPrice(startPrice);
-                rec.setTargetPrice(targetPrice);
-                rec.setTime(LocalDateTime.now(ZoneOffset.UTC));
-                rec.setState(state.getState());     // update the state to the current one
-                notes = buildNotes(rec, request.getLevels(), iterator);
-                rec.setNotes(notes);
-                log.info("/confirmed, id="+request.getId()+", built notes="+notes);
-                var progress = FxUtils.getProgress(request.getPrice(), rec.getStartPrice(), state.getPoint(), targetPips);
-                if (rec.getAction() == ActionEnum.Sell) {
-                    progress = FxUtils.getProgress(rec.getStartPrice(), request.getPrice(), state.getPoint(), targetPips);
-                }
-                rec.setProgress(progress);
-                rec.setMinProgress(progress);
-                rec.setMaxProgress(progress);
-                this.recordService.save(rec);
-                log.info("/confirmed, id="+request.getId()+", saved new record");
-                // update the corresponding state
-                updateStateWithNewAction(state, rec, state.getPoint());
-                log.info("/confirmed, id="+request.getId()+", update state with wew action");
             }
-            // remove record IDs
-            pending.getRecordIds().clear();
-            log.info("/confirmed, id="+request.getId()+", cleared confirmation record");
-            this.confirmationService.save(pending);
 
+            // check for existing trades nearby
+            if (nearbyTradesExist(rec.getPair(), request.getPrice(), state.getPoint())) {
+                log.info(String.format("Ignoring action %s on %s due to an existing trade nearby.", rec.getAction().toString(), rec.getPair()));
+                this.recordService.deleteAll(confirmationRec.getRecordIds().iterator());
+                return new ResponseEntity<>(null, HttpStatus.NOT_ACCEPTABLE);
+            }
 
+            // ignore small waves and missed opportunities (missed pips must be 33% or less)
+            if (enrichRecordData(request, rec, state, confirmationRec.getRecordIds().iterator())) {
+                // TODO should we still close the opposite trades?
+                log.info(String.format("Ignoring action %s on %s due to low risk/reward ratio", rec.getAction().toString(), rec.getPair()));
+                this.recordService.deleteAll(confirmationRec.getRecordIds().iterator());
+                return new ResponseEntity<>(null, HttpStatus.NOT_ACCEPTABLE);
+            }
+
+            // update the corresponding state
+            updateStateWithNewAction(rec, state);
+            log.info("/confirmed, recId="+rec.getId()+", updated state with new action");
 
         } catch(Exception e) {
             var sw = new StringWriter();
             e.printStackTrace(new PrintWriter(sw));
-            errorMessage = sw+"\r\n"+notes;
             log.error("Confirmed handler failed: ",e);
             if (rec!=null) {
-                rec.setNotes(notes+"\r\n"+sw);
+                rec.setNotes(rec.getNotes()+"\r\n"+sw);
                 this.recordService.save(rec);
             }
-            pushNotifications(e.getMessage(), notes);
-        }
-
-        if (errorMessage!=null) {
-            return new ResponseEntity<>(errorMessage, HttpStatus.INTERNAL_SERVER_ERROR);
+            pushNotifications("Confirmed handler failed", e.getMessage());
+            return new ResponseEntity<>(sw.toString(), HttpStatus.INTERNAL_SERVER_ERROR);
         }
 
         // send out notifications
@@ -435,6 +371,93 @@ public class MainControllerV2 {
         return new ResponseEntity<>(null, HttpStatus.OK);
     }
 
+    private Record handleConfirmation(com.vts.fxdata.entities.Confirmation confirmation) {
+        var unconfirmedRecordIds = confirmation.getRecordIds();
+        // retrieve records from the newest to the oldest
+        Collections.reverse(unconfirmedRecordIds);
+        var iterator = unconfirmedRecordIds.iterator();
+        //String errorMessage = null;
+        String prefix = "  handleConfirmation confirmation ID="+confirmation.getId();
+        Record rec = null;
+        log.info(prefix+", unconfirmedRecordIds size="+unconfirmedRecordIds.size());
+
+        if (!iterator.hasNext()) {
+            log.info(prefix + ", No records found");
+            return null;
+        }
+
+        while (rec == null && iterator.hasNext()) {
+            var recordId = iterator.next();
+            log.info(prefix + ", recordId=" + recordId);
+            rec = this.recordService.getRecordById(recordId);
+            if (rec == null) {
+                log.info(prefix + ", missing record skipped");
+            }
+        }
+        if (rec == null) {
+            log.info(prefix + ", all records are missing, signal ignored");
+        }
+        // unlink record IDs from this confirmation record
+        confirmation.getRecordIds().clear();
+        // delete confirmation record
+        this.confirmationService.deleteConfirmation(confirmation.getId());
+        return rec;
+    }
+
+    private boolean enrichRecordData(Confirmation request, Record rec, TfState state, Iterator recordIterator) {
+        var prefix = "/confirmed, recId=" + rec.getId();
+        log.info( prefix + ", calculate targets and pips");
+        var startPrice = request.getLevels()[0];
+        var targetPrice = request.getLevels()[1];
+
+        var targetPips = FxUtils.getPips(targetPrice, request.getPrice(), state.getPoint());
+        var missedPips = FxUtils.getPips(request.getPrice(), startPrice, state.getPoint());
+        if (rec.getAction() == ActionEnum.Sell) {
+            targetPips = FxUtils.getPips(request.getPrice(), targetPrice, state.getPoint());
+            missedPips = FxUtils.getPips(startPrice, request.getPrice(), state.getPoint());
+        }
+        log.info(prefix + ", targetPips=" + targetPips);
+
+        // ignore small waves and missed opportunities (missed pips must be 33% or less)
+        if (targetPips<40 || missedPips>targetPips/2) {
+            return false;
+        }
+        rec.setTargetPips(targetPips);
+        rec.setConfirmation(true);
+        rec.setPrice(request.getPrice());
+        rec.setStartPrice(startPrice);
+        rec.setTargetPrice(targetPrice);
+        rec.setTime(LocalDateTime.now(ZoneOffset.UTC));
+        rec.setState(state.getState());     // update the state to the current one
+        var notes = buildNotes(rec, request.getLevels(), recordIterator);
+        rec.setNotes(notes);
+        log.info(prefix + ", built notes="+notes);
+        var progress = FxUtils.getProgress(request.getPrice(), rec.getStartPrice(), state.getPoint(), targetPips);
+        if (rec.getAction() == ActionEnum.Sell) {
+            progress = FxUtils.getProgress(rec.getStartPrice(), request.getPrice(), state.getPoint(), targetPips);
+        }
+        rec.setProgress(progress);
+        rec.setMinProgress(progress);
+        rec.setMaxProgress(progress);
+        this.recordService.save(rec);
+        log.info(prefix + ", saved enriched record");
+        return true;
+    }
+
+    private boolean nearbyTradesExist(String pair, double price, double point) {
+        var openTrades = this.tradeService.getTrades().stream().filter(t -> t.getAction().getPair().equals(pair)).toList();
+        var nearbyTradesCount = openTrades.stream().filter(t -> Math.abs(FxUtils.getPips(t.getAction().getPrice(), price, point))<50).count();
+        log.info("  nearbyTradesExist, nearby trades count="+nearbyTradesCount);
+        // don't open new trades if there's an existing one within 50 pips
+        return nearbyTradesCount>0;
+    }
+
+    private boolean checkActionMatchesState(Record rec, TfState state) {
+        // check if action record does not clash with a trend in this timeframe
+        return !(state.getState() == StateEnum.Bullish && rec.getAction() == ActionEnum.Sell ||
+                state.getState() == StateEnum.Bearish && rec.getAction() == ActionEnum.Buy);
+    }
+
     private void requestConfirmation(com.vts.fxdata.entities.Record rec) {
         var pending = getPendingConfirmations(rec.getPair()).stream().filter(c -> c.getTimeframe()==rec.getTimeframe()).findFirst();
         if (pending.isPresent()) {
@@ -486,7 +509,7 @@ public class MainControllerV2 {
         return notesBuilder.toString();
     }
 
-    private void updateStateWithNewAction(TfState state, com.vts.fxdata.entities.Record newAction, double point) throws PushClientException {
+    private void updateStateWithNewAction(com.vts.fxdata.entities.Record newAction, TfState state) throws PushClientException {
         boolean notificationSent = false;
         log.info("/confirmed/updateStateWithNewAction, recordId="+newAction.getId()+", state has actions: "+state.getActions().size());
         for(var stateAction : state.getActions()) {
@@ -533,7 +556,7 @@ public class MainControllerV2 {
         // set new action
         state.getActions().clear();
         state.addAction(newAction);
-        state.setPoint(point);
+       // state.setPoint(point);
         this.stateService.save(state);
         log.info("    /confirmed/updateStateWithNewAction, actionId="+newAction.getId()+", saved state");
         if (newAction.getTimeframe()==TimeframeEnum.H1) {
