@@ -120,42 +120,43 @@ public class MainControllerV2 {
         log.info(String.format("/confirmed body=%s",dto));
 
         Record rec = null;
-
+        var pair = rec.getPair();
         try {
             // mark the newest record as confirmed and delete the rest
             rec = handleConfirmation(confirmationRec);
             if (rec==null) {
                 return new ResponseEntity<>("Confirmation is ignored as record wasn't found.", HttpStatus.NOT_FOUND);
             }
-            log.info("/confirmed, id="+request.getId()+", record retrieved, recId="+rec.getId());
+            log.info("/confirmed, id="+request.getId()+", record retrieved, recId="+rec.getId()+". "+pair+"."+rec.getTimeframe()+", action="+rec.getAction());
 
             // retrieve the pair's state in this timeframe
-            var state = this.stateService.getState(rec.getPair(), rec.getTimeframe().ordinal());
-            // TODO check the strength of the trend. Must be older than 150 candles to trust it
+            var state = this.stateService.getState(pair, rec.getTimeframe().ordinal());
+            // TODO check the strength of the trend. Must be older than 150 candles to trust it (maybe not)
 
             // check if confirmation does not clash with a trend in this timeframe
-            if (checkActionMatchesState(rec, state)) {
-                log.info("/confirmed, recId="+rec.getId()+", state is in the opposite direction, ignoring the action, deleting unconfirmed records");
+            if (!checkActionMatchesState(rec, state)) {
+                log.info("/confirmed, recId="+rec.getId()+", state is in the opposite direction, ignoring the action. state="+state.getState()+", action="+rec.getAction());
                 // delete all records that signal to act against the trend
                 this.recordService.deleteAll(confirmationRec.getRecordIds().iterator());
                 return new ResponseEntity<>(null, HttpStatus.NOT_ACCEPTABLE);
             }
 
             // check for existing trades nearby
-            if (nearbyTradesExist(rec.getPair(), request.getPrice(), state.getPoint())) {
-                log.info(String.format("Ignoring action %s on %s due to an existing trade nearby.", rec.getAction().toString(), rec.getPair()));
+            if (nearbyTradesExist(rec, request.getPrice(), state.getPoint())) {
+                log.info(String.format("Ignoring action %s on %s due to an existing trade nearby.", rec.getAction().toString(), pair));
                 this.recordService.deleteAll(confirmationRec.getRecordIds().iterator());
                 return new ResponseEntity<>(null, HttpStatus.NOT_ACCEPTABLE);
             }
 
             // ignore small waves and missed opportunities (missed pips must be 33% or less)
-            if (enrichRecordData(request, rec, state, confirmationRec.getRecordIds().iterator())) {
+            if (!enrichRecordData(request, rec, state, confirmationRec.getRecordIds().iterator())) {
                 // TODO should we still close the opposite trades?
-                log.info(String.format("Ignoring action %s on %s due to low risk/reward ratio", rec.getAction().toString(), rec.getPair()));
+                log.info(String.format("Ignoring action %s on %s due to low risk/reward ratio", rec.getAction().toString(), pair));
                 this.recordService.deleteAll(confirmationRec.getRecordIds().iterator());
                 return new ResponseEntity<>(null, HttpStatus.NOT_ACCEPTABLE);
             }
 
+            // close existing positions in the opposite direction if any
             // update the corresponding state
             updateStateWithNewAction(rec, state);
             log.info("/confirmed, recId="+rec.getId()+", updated state with new action");
@@ -175,12 +176,12 @@ public class MainControllerV2 {
         // send out notifications
         int count = rec.getConfirmationDelay().isEmpty() ? 0: rec.getConfirmationDelay().length();
         String message = String.format("%s %s  (%s)", rec.getAction(),
-                rec.getPair(), rec.getPrice());
+                pair, rec.getPrice());
         pushNotifications(message, rec.getTimeframe() + " " + rec.getState() +
                 " ".repeat(24-count) + rec.getConfirmationDelay());
 
         this.confirmationService.deleteConfirmation(request.getId());
-        log.info(String.format("Added a new action: %s on %s.", rec.getAction().toString(), rec.getPair()));
+        log.info(String.format("Added a new action: %s on %s.", rec.getAction().toString(), pair));
         return new ResponseEntity<>(null, HttpStatus.OK);
     }
 
@@ -192,6 +193,8 @@ public class MainControllerV2 {
     @PostMapping("/state")
     public ResponseEntity<String> setChartState(@RequestBody State state) {
         try {
+            // TODO if the state changes to an opposite side for already opened trades
+            // TODo mark the state as Requires Attention and render it in orange on the dashboard
             this.stateService.setState(TfState.newInstance(state));
         } catch (Exception e) {
             return new ResponseEntity<>(e.getMessage(), HttpStatus.BAD_REQUEST);
@@ -229,7 +232,6 @@ public class MainControllerV2 {
         final var pair = request.getPair();
         var openTrades = this.tradeService.getTrades().stream().filter(t -> t.getAction().getPair().equals(pair)).toList();
         handleDoublingDown(openTrades, request.getPrice(), request.getPoint());
-        handleWrongSideOfTrend(openTrades, request.getPrice(), request.getPoint());
 
         for(TfState state : this.stateService.getStates(request.getPair())) {
             updateStateMetrics(state, request);
@@ -444,8 +446,9 @@ public class MainControllerV2 {
         return true;
     }
 
-    private boolean nearbyTradesExist(String pair, double price, double point) {
-        var openTrades = this.tradeService.getTrades().stream().filter(t -> t.getAction().getPair().equals(pair)).toList();
+    private boolean nearbyTradesExist(Record rec, double price, double point) {
+        var openTrades = this.tradeService.getTrades().stream().filter(t ->
+                t.getAction().getPair().equals(rec.getPair()) && t.getAction().getAction()==rec.getAction()).toList();
         var nearbyTradesCount = openTrades.stream().filter(t -> Math.abs(FxUtils.getPips(t.getAction().getPrice(), price, point))<50).count();
         log.info("  nearbyTradesExist, nearby trades count="+nearbyTradesCount);
         // don't open new trades if there's an existing one within 50 pips
@@ -454,8 +457,10 @@ public class MainControllerV2 {
 
     private boolean checkActionMatchesState(Record rec, TfState state) {
         // check if action record does not clash with a trend in this timeframe
-        return !(state.getState() == StateEnum.Bullish && rec.getAction() == ActionEnum.Sell ||
-                state.getState() == StateEnum.Bearish && rec.getAction() == ActionEnum.Buy);
+        var opt1 = state.getState() == StateEnum.Bullish && rec.getAction() == ActionEnum.Sell;
+        var opt2 = state.getState() == StateEnum.Bearish && rec.getAction() == ActionEnum.Buy;
+        log.info("  checkActionMatchesState, opt1="+opt1+", opt2="+opt2+", state and action match="+(!(opt1||opt2)));
+        return !(opt1 || opt2);
     }
 
     private void requestConfirmation(com.vts.fxdata.entities.Record rec) {
@@ -511,57 +516,51 @@ public class MainControllerV2 {
 
     private void updateStateWithNewAction(com.vts.fxdata.entities.Record newAction, TfState state) throws PushClientException {
         boolean notificationSent = false;
-        log.info("/confirmed/updateStateWithNewAction, recordId="+newAction.getId()+", state has actions: "+state.getActions().size());
-        for(var stateAction : state.getActions()) {
-            log.info("    /confirmed/updateStateWithNewAction, actionId="+newAction.getId());
-            if (stateAction.getAction() == newAction.getAction()) {
-                log.info("    /confirmed/updateStateWithNewAction, actionId="+newAction.getId()+", another action in the same direction");
-                // we've got another action in the same direction
+        var prefix = "    /updateStateWithNewAction, actionId="+newAction.getId();
+        log.info(prefix+", state has actions: "+state.getActions().size());
+        var optAction = state.getActions().stream().findFirst();
+        if (optAction.isPresent()) {
+            var action = optAction.get();
+            if (action.getAction()==newAction.getAction()) {
+                // the new action is in the same direction
+                log.info(prefix+", another action in the same direction");
                 // will use the new action, the previous ones will have no end time
-                if (!notificationSent) {
-                    var message = String.format("Another %s %s %s", newAction.getPair(), newAction.getTimeframe(), newAction.getAction());
-                    notificationSent = pushNotifications(message, String.format("previous was (%s) at %s", stateAction.getPrice(), TimeUtils.formatTime(stateAction.getTime())));
-                }
+                var message = String.format("Another %s %s %s", newAction.getPair(), newAction.getTimeframe(), newAction.getAction());
+                pushNotifications(message, String.format("previous was (%s) at %s", action.getPrice(), TimeUtils.formatTime(action.getTime())));
             } else {
-                log.info("    /confirmed/updateStateWithNewAction, actionId="+newAction.getId()+", opposite direction, closing existing action");
-                stateAction.setEndTime(TimeUtils.removeSeconds(LocalDateTime.now(ZoneOffset.UTC)));
-                stateAction.setExitPrice(newAction.getPrice());  // price of the new action is the price we complete the previous action
-                                                                // TODO this works for range, what about trend?
-                double highPrice, lowPrice;
-                if (stateAction.getAction() == ActionEnum.Buy) {
-                    lowPrice = stateAction.getPrice();
-                    highPrice = newAction.getPrice();   // hopefully higher than the price before
-                } else {
-                    highPrice = stateAction.getPrice();
-                    lowPrice = newAction.getPrice();    // hopefully lower than the price before
+                // the new action is in the opposite direction
+                for (var stateAction : state.getActions()) {
+                    log.info(prefix+", opposite direction, closing existing action");
+                    closeAction(stateAction, newAction.getPrice(), state.getPoint());
+
+                    // for pairs in Range this would mean to close existing trades and reverse
+                    // for pairs in a trend we should ignore an action in the opposite direction to the trend
+                    if (!notificationSent) {
+                        var message = String.format("%s %s %s", newAction.getPair(), newAction.getTimeframe(), newAction.getAction());
+                        notificationSent = pushNotifications(message, String.format("is replacing %s on %s at %s",
+                                stateAction.getAction(), stateAction.getTimeframe(), TimeUtils.formatTime(stateAction.getTime())));
+                    }
+                    // close existing trade
+                    var trade = this.tradeService.findByRecordId(stateAction.getId());
+                    if (trade != null) { // trades for actions from H4 won't be found
+                        log.info(prefix+", opposite direction, found Trade for existing action, issuing Close command");
+                        trade.setCommand(TradeEnum.Close);
+                        this.tradeService.save(trade);
+                    }
                 }
-                stateAction.setProfit(FxUtils.getPips(highPrice, lowPrice, state.getPoint()));
-                // for pairs in Range this would mean to close existing trades and reverse
-                // for pairs in a trend we should ignore an action in the opposite direction to the trend
-                if (!notificationSent) {
-                    var message = String.format("%s %s %s", newAction.getPair(), newAction.getTimeframe(), newAction.getAction());
-                    notificationSent = pushNotifications(message, String.format("is replacing %s on %s at %s",
-                            stateAction.getAction(), stateAction.getTimeframe(), TimeUtils.formatTime(stateAction.getTime())));
-                }
-                // close existing trade
-                var trade = this.tradeService.findByRecordId(stateAction.getId());
-                if (trade != null) { // trades for actions from H4 won't be found
-                    log.info("    /confirmed/updateStateWithNewAction, actionId="+newAction.getId()+", opposite direction, found Trade for existing action, issuing Close command");
-                    trade.setCommand(TradeEnum.Close);
-                    this.tradeService.save(trade);
-                }
+                // remove previous actions
+                state.getActions().clear();
             }
         }
-        log.info("    /confirmed/updateStateWithNewAction, actionId="+newAction.getId()+", clearing existing state actions, adding the new one");
-        // set new action
-        state.getActions().clear();
+
+        log.info(prefix+", clearing existing state actions, adding the new one");
+        // add new action
         state.addAction(newAction);
-       // state.setPoint(point);
         this.stateService.save(state);
-        log.info("    /confirmed/updateStateWithNewAction, actionId="+newAction.getId()+", saved state");
+        log.info(prefix+", saved state");
         if (newAction.getTimeframe()==TimeframeEnum.H1) {
             this.tradeService.save(new Trade(newAction, TradeEnum.Open));
-            log.info("    /confirmed/updateStateWithNewAction, actionId="+newAction.getId()+", issued a new Open trade command");
+            log.info(prefix+", issued a new Open trade command");
         }
     }
 
@@ -637,8 +636,19 @@ public class MainControllerV2 {
             log.info(String.format("Added a new action: %s on %s to double down.", rec.getAction().toString(), rec.getPair()));
         }
     }
+    
+    private void closeAction(Record action, double closePrice, double point) {
+        action.setEndTime(TimeUtils.removeSeconds(LocalDateTime.now(ZoneOffset.UTC)));
+        action.setExitPrice(closePrice);  
 
-    private void handleWrongSideOfTrend(List<Trade> openTrades, double price, double point) {
-        // TODO var bearishTrades = openTrades.stream().filter(t -> t.getAction() != null && t.getAction().getAction()==ActionEnum.Sell);
+        double highPrice, lowPrice;
+        if (action.getAction() == ActionEnum.Buy) {
+            lowPrice = action.getPrice();
+            highPrice = closePrice;   // ideally higher than the price before
+        } else {
+            highPrice = action.getPrice();
+            lowPrice = closePrice;    // ideally lower than the price before
+        }
+        action.setProfit(FxUtils.getPips(highPrice, lowPrice, point));
     }
 }

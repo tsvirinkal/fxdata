@@ -31,17 +31,17 @@
 .bullish {
     background-image: url('../../../assets/bullish.png');
     background-position: right; 
-    background-size: 123px;
+    background-size: 127px;
 }
 .bearish {
     background-image: url('../../../assets/bearish.png');
     background-position: left; 
-    background-size: 123px;
+    background-size: 127px;
 }
 .range {
     background-image: url('../../../assets/range.png');
     background-position: left; 
-    background-size: 123px;
+    background-size: 127px;
 }
 .arrow {
     height: 22px;
