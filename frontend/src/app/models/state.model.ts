@@ -7,5 +7,6 @@ export interface State {
     time: string;
     timeframe: string;
     progress: number;
+    active: boolean;
   }
   

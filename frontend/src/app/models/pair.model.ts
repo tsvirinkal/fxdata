@@ -7,4 +7,5 @@ export interface Pair {
     price: number;
     point: number;
     updated: string;
+    activeTf: string;
 }

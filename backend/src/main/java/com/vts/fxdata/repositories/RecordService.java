@@ -1,8 +1,12 @@
 package com.vts.fxdata.repositories;
 
+import com.vts.fxdata.controllers.MainControllerV2;
 import com.vts.fxdata.entities.Record;
 import com.vts.fxdata.models.dto.DayRecords;
 import com.vts.fxdata.models.dto.Result;
+import org.hibernate.exception.ConstraintViolationException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -14,7 +18,7 @@ import java.util.Optional;
 
 @Service
 public class RecordService {
-
+    private static final Logger log = LoggerFactory.getLogger(RecordService.class);
     private final RecordRepository recordRepository;
 
     @Autowired
@@ -24,7 +28,12 @@ public class RecordService {
 
     public void addRecord(Record record)
     {
-        this.recordRepository.save(record);
+        try {
+            this.recordRepository.save(record);
+        } catch(Exception e) {
+            log.error(String.format("Failed to persist record for %s,%s id=%d",
+                    record.getPair(),record.getTimeframe().toString(),record.getId()), e);
+        }
     }
 
     public List<DayRecords> getLastRecords(int tzOffset) {

@@ -14,7 +14,7 @@ var tzoffset = "?tzo=" + offset;
   providedIn: 'root',
 })
 export class DataService {
- 
+
   constructor(private http: HttpClient) { }
 
   getData(): Observable<Day[]> {
@@ -46,7 +46,17 @@ export class DataService {
         console.error('POST error:', error);
       });
   }
-
+  
+  setActiveState(pair: string, activeTf: string) {
+    this.http.post(environment.apiUrl + "pair/"+pair, {"activeTF": activeTf}).subscribe(
+      (response) => {
+        console.log('POST response:', response);
+      },
+      (error) => {
+        console.error('POST error:', error);
+      });
+  }
+ 
   getTodayString(): string {
     const date = new Date(); 
     const day = String(date.getDate()).padStart(2, '0');

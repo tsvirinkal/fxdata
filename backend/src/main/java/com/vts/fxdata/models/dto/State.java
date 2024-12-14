@@ -11,10 +11,12 @@ public class State {
     private Integer progress;
     private List<Long> actions;
 
+    private Boolean isActive;
+
     public State() {
     }
 
-    public State(String pair, String state, String timeframe, String time, Action action, Integer progress, List<Long> ids) {
+    public State(String pair, String state, String timeframe, String time, Action action, Integer progress, List<Long> ids, boolean isActive) {
         this.pair = pair;
         this.state = state;
         this.timeframe = timeframe;
@@ -22,6 +24,7 @@ public class State {
         this.action = action;
         this.progress = progress;
         this.actions = ids;
+        this.isActive = isActive;
     }
 
     public String getPair() {
@@ -78,5 +81,13 @@ public class State {
 
     public void setActions(List<Long> actions) {
         this.actions = actions;
+    }
+
+    public Boolean getActive() {
+        return isActive;
+    }
+
+    public void setActive(Boolean active) {
+        isActive = active;
     }
 }

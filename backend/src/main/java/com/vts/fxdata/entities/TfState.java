@@ -36,6 +36,7 @@ public class TfState {
     private StateEnum state;
     private Double price;
     private Double point;
+    private Boolean isActive;
 
     @OneToMany(cascade = CascadeType.ALL)
     @JoinColumn(name = "stateId", referencedColumnName = "id")
@@ -150,6 +151,14 @@ public class TfState {
 
     public void addAction(Record action) {
         this.actions.add(action);
+    }
+
+    public boolean isActive() {
+        return isActive;
+    }
+
+    public void setActive(boolean active) {
+        isActive = active;
     }
 }
 

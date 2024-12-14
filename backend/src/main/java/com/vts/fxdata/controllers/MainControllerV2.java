@@ -120,39 +120,52 @@ public class MainControllerV2 {
         log.info(String.format("/confirmed body=%s",dto));
 
         Record rec = null;
-        var pair = rec.getPair();
+        String pair = null;
         try {
             // mark the newest record as confirmed and delete the rest
             rec = handleConfirmation(confirmationRec);
             if (rec==null) {
+                log.info("/confirmed, recId="+rec.getId()+", Confirmation is ignored as record wasn't found.");
                 return new ResponseEntity<>("Confirmation is ignored as record wasn't found.", HttpStatus.NOT_FOUND);
             }
+
+            pair = rec.getPair();
             log.info("/confirmed, id="+request.getId()+", record retrieved, recId="+rec.getId()+". "+pair+"."+rec.getTimeframe()+", action="+rec.getAction());
 
             // retrieve the pair's state in this timeframe
             var state = this.stateService.getState(pair, rec.getTimeframe().ordinal());
-            // TODO check the strength of the trend. Must be older than 150 candles to trust it (maybe not)
+            if (!state.isActive()) {
+                // ignore the signal since this state is not active right now
+                log.info("/confirmed, recId="+rec.getId()+", Confirmation is ignored as state is not active.");
+                // delete all records that signal to act against the trend
+                this.recordService.deleteAll(confirmationRec.getRecordIds().iterator());
+                this.confirmationService.deleteConfirmation(request.getId());
+                return new ResponseEntity<>("Confirmation is ignored as state is not active.", HttpStatus.NOT_ACCEPTABLE);
+            }
 
-            // check if confirmation does not clash with a trend in this timeframe
+            // check if confirmed action direction matches the state
             if (!checkActionMatchesState(rec, state)) {
                 log.info("/confirmed, recId="+rec.getId()+", state is in the opposite direction, ignoring the action. state="+state.getState()+", action="+rec.getAction());
                 // delete all records that signal to act against the trend
                 this.recordService.deleteAll(confirmationRec.getRecordIds().iterator());
+                this.confirmationService.deleteConfirmation(request.getId());
                 return new ResponseEntity<>(null, HttpStatus.NOT_ACCEPTABLE);
             }
 
             // check for existing trades nearby
             if (nearbyTradesExist(rec, request.getPrice(), state.getPoint())) {
-                log.info(String.format("Ignoring action %s on %s due to an existing trade nearby.", rec.getAction().toString(), pair));
+                log.info(String.format("/confirmed, recId=%s, Ignoring action %s on %s due to an existing trade nearby.", rec.getId(), rec.getAction().toString(), pair));
                 this.recordService.deleteAll(confirmationRec.getRecordIds().iterator());
+                this.confirmationService.deleteConfirmation(request.getId());
                 return new ResponseEntity<>(null, HttpStatus.NOT_ACCEPTABLE);
             }
 
             // ignore small waves and missed opportunities (missed pips must be 33% or less)
             if (!enrichRecordData(request, rec, state, confirmationRec.getRecordIds().iterator())) {
                 // TODO should we still close the opposite trades?
-                log.info(String.format("Ignoring action %s on %s due to low risk/reward ratio", rec.getAction().toString(), pair));
+                log.info(String.format("/confirmed, recId=%s, Ignoring action %s on %s due to low risk/reward ratio", rec.getId(), rec.getAction().toString(), pair));
                 this.recordService.deleteAll(confirmationRec.getRecordIds().iterator());
+                this.confirmationService.deleteConfirmation(request.getId());
                 return new ResponseEntity<>(null, HttpStatus.NOT_ACCEPTABLE);
             }
 
@@ -164,7 +177,7 @@ public class MainControllerV2 {
         } catch(Exception e) {
             var sw = new StringWriter();
             e.printStackTrace(new PrintWriter(sw));
-            log.error("Confirmed handler failed: ",e);
+            log.error("/confirmed, recId="+rec.getId()+"Confirmed handler failed: ",e);
             if (rec!=null) {
                 rec.setNotes(rec.getNotes()+"\r\n"+sw);
                 this.recordService.save(rec);
@@ -188,6 +201,35 @@ public class MainControllerV2 {
     @GetMapping("/pending/{pair}")
     public List<com.vts.fxdata.entities.Confirmation> getPendingConfirmations(@PathVariable String pair) {
         return this.confirmationService.getPendingConfirmations(pair);
+    }
+
+    @PostMapping("/pair/{pair}")
+    public ResponseEntity<String> setActiveState(@PathVariable String pair, @RequestBody ActiveState request) {
+        try {
+            var states = this.stateService.getStates(pair);
+            var newOpt = states.stream().filter(s ->
+                    s.getTimeframe().name().equals(request.getActiveTF())).findFirst();
+            if (newOpt.isPresent()) {
+                var newActive = newOpt.get();
+                var oldOpt = states.stream().filter(s -> s.isActive()).findFirst();
+                if (oldOpt.isPresent()) {
+                    var oldActive = oldOpt.get();
+                    var oldActions = oldActive.getActions();
+
+                    newActive.getActions().clear(); // cleared since they do not correspond to actual trades
+                    newActive.getActions().addAll(oldActions);
+                    oldActions.clear();
+                    oldActive.setActive(false);
+                    this.stateService.save(oldActive);
+                }
+                newActive.setActive(true);
+                this.stateService.save(newActive);
+                return new ResponseEntity<>(null, HttpStatus.OK);
+            }
+        } catch (Exception e) {
+            log.error("Error in setActiveState():", e);
+        }
+        return new ResponseEntity<>(null, HttpStatus.BAD_REQUEST);
     }
 
     @PostMapping("/state")
@@ -223,7 +265,7 @@ public class MainControllerV2 {
     }
 
     @PostMapping("/heartbeat")
-    public ResponseEntity<String> addClient(@RequestBody Heartbeat request) {
+    public ResponseEntity<String> addClient(@RequestBody Heartbeat request) { // TODO pass in an updated target
         if (request==null) {
             return new ResponseEntity<>(null, HttpStatus.BAD_REQUEST);
         }
@@ -296,14 +338,9 @@ public class MainControllerV2 {
                 return new ResponseEntity<>("Failed to close an invalid trade.", HttpStatus.BAD_REQUEST);
             }
             var action = trade.getAction();
-            if (action.getTimeframe()!=TimeframeEnum.H1) {
-                return new ResponseEntity<>("Invalid timeframe in trade.", HttpStatus.BAD_REQUEST);
-            }
-            var state = this.stateService.getState(action.getPair(), TimeframeEnum.H1.ordinal());
-            if (state.getActions().remove(trade.getAction())) {
+            var state = this.stateService.getActiveState(action.getPair());
+            if (state!=null && state.getActions().remove(trade.getAction())) {
                 this.stateService.save(state);
-            } else {
-                throw new RuntimeException(String.format("Trade to close references an action that is missing in the state. Trade ID=%d",tradeAck.getId()));
             }
             action.setEndTime(LocalDateTime.now(ZoneOffset.UTC));
             action.setExitPrice(state.getPrice());
@@ -331,9 +368,6 @@ public class MainControllerV2 {
             if (trade.getOpenedTime()!=null) {
                 return new ResponseEntity<>("Failed to open an invalid trade.", HttpStatus.BAD_REQUEST);
             }
-            if (trade.getAction().getTimeframe()!=TimeframeEnum.H1) {
-                return new ResponseEntity<>("Invalid timeframe in trade.", HttpStatus.BAD_REQUEST);
-            }
             trade.setOpenedTime(LocalDateTime.now(ZoneOffset.UTC));
             trade.getAction().setPrice(tradeAck.getPrice());
             trade.setCommand(TradeEnum.Wait);
@@ -358,9 +392,6 @@ public class MainControllerV2 {
             }
             if (trade.getOpenedTime()==null || trade.getClosedTime()!=null) {
                 return new ResponseEntity<>("Failed to close an invalid trade.", HttpStatus.BAD_REQUEST);
-            }
-            if (trade.getAction().getTimeframe()!=TimeframeEnum.H1) {
-                return new ResponseEntity<>("Invalid timeframe in trade.", HttpStatus.BAD_REQUEST);
             }
             var closedTime = LocalDateTime.now(ZoneOffset.UTC);
             trade.setClosedTime(closedTime);
@@ -450,6 +481,7 @@ public class MainControllerV2 {
         var openTrades = this.tradeService.getTrades().stream().filter(t ->
                 t.getAction().getPair().equals(rec.getPair()) && t.getAction().getAction()==rec.getAction()).toList();
         var nearbyTradesCount = openTrades.stream().filter(t -> Math.abs(FxUtils.getPips(t.getAction().getPrice(), price, point))<50).count();
+        openTrades.stream().forEach(t -> log.info("    nearbyTradesExist, openTrades:"+t.getAction().getPair()+" "+t.getAction().getAction()+", new rec action:"+rec.getAction()));
         log.info("  nearbyTradesExist, nearby trades count="+nearbyTradesCount);
         // don't open new trades if there's an existing one within 50 pips
         return nearbyTradesCount>0;
@@ -558,9 +590,11 @@ public class MainControllerV2 {
         state.addAction(newAction);
         this.stateService.save(state);
         log.info(prefix+", saved state");
-        if (newAction.getTimeframe()==TimeframeEnum.H1) {
+        if (state.isActive() && newAction.getTimeframe()==state.getTimeframe()) {
             this.tradeService.save(new Trade(newAction, TradeEnum.Open));
             log.info(prefix+", issued a new Open trade command");
+        } else {
+            log.info(prefix+", ignored since the state is not active.");
         }
     }
 
@@ -617,23 +651,26 @@ public class MainControllerV2 {
     private void handleDoublingDown(List<Trade> openTrades, double price, double point) {
         var lt = openTrades.stream().filter(t -> t.getAction() != null)
                 .max(Comparator.comparingInt(t -> t.getAction().getProfit()));
-        if (lt.isPresent() && lt.get().getAction().getProfit() < -50) {
-            // double down
+        if (lt.isPresent()) {
             var rec = lt.get().getAction();
-            var newRec = new Record(rec.getPair(), rec.getTimeframe(), rec.getAction(), rec.getState(), price, true);
-            newRec.setStartPrice(rec.getStartPrice());
-            newRec.setStartTime(LocalDateTime.now(ZoneOffset.UTC));
-            newRec.setTargetPrice(rec.getTargetPrice());
-            updateActionMetrics(newRec, price, point);
+            var activeTf = this.stateService.getActiveState(rec.getPair()).getTimeframe();
+            if (lt.get().getAction().getProfit() < -FxUtils.getMinPipDistance(activeTf)) {
+                // double down
+                var newRec = new Record(rec.getPair(), activeTf, rec.getAction(), rec.getState(), price, true);
+                newRec.setStartPrice(rec.getStartPrice());
+                newRec.setStartTime(LocalDateTime.now(ZoneOffset.UTC));
+                newRec.setTargetPrice(rec.getTargetPrice());
+                updateActionMetrics(newRec, price, point);
 
-            this.recordService.saveAndFlush(newRec);
-            this.tradeService.save(new Trade(newRec, TradeEnum.Open));
-            var state = this.stateService.getState(rec.getPair(), rec.getTimeframe().ordinal());
-            if ( state!=null ) {
-                state.getActions().add(newRec);
-                this.stateService.saveAndFlush(state);
+                this.recordService.saveAndFlush(newRec);
+                this.tradeService.save(new Trade(newRec, TradeEnum.Open));
+                var state = this.stateService.getState(rec.getPair(), rec.getTimeframe().ordinal());
+                if (state != null) {
+                    state.getActions().add(newRec);
+                    this.stateService.saveAndFlush(state);
+                }
+                log.info(String.format("Added a new action: %s on %s to double down.", rec.getAction().toString(), rec.getPair()));
             }
-            log.info(String.format("Added a new action: %s on %s to double down.", rec.getAction().toString(), rec.getPair()));
         }
     }
     

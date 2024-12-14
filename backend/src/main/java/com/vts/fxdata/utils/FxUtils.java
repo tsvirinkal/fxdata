@@ -1,5 +1,7 @@
 package com.vts.fxdata.utils;
 
+import com.vts.fxdata.models.TimeframeEnum;
+
 public class FxUtils {
 
     /**
@@ -27,5 +29,19 @@ public class FxUtils {
     public static int getProgress(double price1, double price2, double point, int targetPips)
     {
         return (int)((price1-price2)/point/10 * 100.0 / targetPips);
+    }
+
+    /**
+     * Returns the number of pips that positions should be open apart for a given timeframe.
+     * @param timeframe
+     * @return
+     */
+    public static int getMinPipDistance(TimeframeEnum timeframe) {
+        switch (timeframe) {
+            case H1: return 50;
+            case H4: return 75;
+            case D1: return 150;
+            default: return Integer.MAX_VALUE;
+        }
     }
 }

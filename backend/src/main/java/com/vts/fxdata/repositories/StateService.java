@@ -47,6 +47,13 @@ public class StateService {
         return this.stateRepository.getState(pair, timeframe);
     }
 
+    public TfState getActiveState(String pair) {
+        if (pair==null)
+            throw new IllegalArgumentException("Pair is null");
+        var rec = this.stateRepository.getStates(pair).stream().filter(st -> st.isActive()).findFirst();
+        return rec.isPresent() ? rec.get() : null;
+    }
+
     public List<TfState> getStates(String pair) {
         if (pair==null)
             throw new IllegalArgumentException("Pair is null");

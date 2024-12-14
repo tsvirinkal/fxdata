@@ -37,7 +37,7 @@ public class StatesView {
                 TfState tfState = chStates.get(tf);
 
                 if ( tfState==null ) {
-                    state = new State(pair, "Pending", tf.toString(), "", null,0, Arrays.asList());
+                    state = new State(pair, "Pending", tf.toString(), "", null,0, Arrays.asList(), false);
                 }
                 else {
                     try {
@@ -64,7 +64,7 @@ public class StatesView {
                                 .collect(Collectors.toList());
                     }
                     state = new State(pair, tfState.getState().toString(), tf.toString(),
-                            TimeUtils.formatTime(tfState.getTime().minusMinutes(tzOffset)), actionView, progress, ids);
+                            TimeUtils.formatTime(tfState.getTime().minusMinutes(tzOffset)), actionView, progress, ids, tfState.isActive());
                 }
                 states.add(state);
             }

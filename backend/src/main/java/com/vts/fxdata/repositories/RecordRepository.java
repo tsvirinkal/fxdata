@@ -22,7 +22,7 @@ public interface RecordRepository extends JpaRepository<Record, Long> {
     @Query(value = "select * from stars where pair=:#{#pair} and confirmation=true order by time desc limit 200", nativeQuery = true)
     List<Record> getConfirmedRecordsByPair(String pair);
 
-    @Query(value = "select * from stars where timeframe=3 and confirmation=true and end_time is not null order by end_time desc, pair asc limit 200", nativeQuery = true)
+    @Query(value = "select * from stars where confirmation=true and end_time is not null order by end_time desc, pair asc", nativeQuery = true)
     List<Record> getResultRecords();
 
     List<Record> findByPair(String pair);

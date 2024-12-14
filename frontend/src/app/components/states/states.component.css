@@ -21,3 +21,6 @@
 .quote {
     font-size: 10pt;
 }
+.form-check-label {
+    padding-left: 10px; 
+}
