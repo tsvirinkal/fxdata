@@ -154,7 +154,7 @@ public class TfState {
     }
 
     public boolean isActive() {
-        return isActive;
+        return isActive == null ? false : isActive;
     }
 
     public void setActive(boolean active) {

@@ -1,4 +1,4 @@
-import { Component, OnInit, NgModule } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { NgbPopoverModule } from '@ng-bootstrap/ng-bootstrap';
 import { StateComponent } from '../state/state.component';
@@ -14,12 +14,11 @@ import { FormsModule } from '@angular/forms';
   styleUrl: './states.component.css'
 })
 export class StatesComponent implements OnInit {
-
   pairs: Pair[] = [];
   editedPair?: Pair;
   selectedTf?: string;
   selectedTfIndex = 0;
-  constructor(private dataService: DataService) {}
+  constructor(private dataService: DataService, private cdr: ChangeDetectorRef) {}
 
   ngOnInit(): void {
     // query for states 
@@ -44,14 +43,25 @@ export class StatesComponent implements OnInit {
     console.log('saved: '+ this.selectedTf+" for "+this.editedPair?.name);
     if (this.editedPair && this.selectedTf) {
       this.editedPair.activeTf = this.selectedTf;
-      this.dataService.setActiveState(this.editedPair.name, this.selectedTf);
-      this.editedPair?.states.forEach(s => s.active=false);
-      const state = this.editedPair?.states.find(s => s.timeframe===this.selectedTf);
-      if (state) {
-        state.active = true;
-      }
+      this.dataService.setActiveState(this.editedPair.name, this.selectedTf).subscribe(
+        () => {
+          this.ngOnInit();
+          this.cdr.detectChanges();
+        },
+        (error) => {
+          console.error('POST error:', error);
+        })
     }
     this.editedPair = undefined;
     this.selectedTf = undefined;
+  }
+  
+  getActions(pair: Pair) {
+    var index = pair.states.findIndex(s => s.active);
+    if (index>=0) {
+      const state = pair.states[index];
+      return state.actions;
+    }
+    return []
   }
 }

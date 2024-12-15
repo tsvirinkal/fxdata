@@ -11,7 +11,7 @@
     <tbody>
       <tr *ngFor="let pair of pairs">
         <ng-template #popContent>
-          <div class="popup">Price: {{ pair.price }}<br>Updated: {{ pair.updated}}<br>ids: [{{ pair.states[0].actions }}]</div>
+          <div class="popup">Price: {{ pair.price }}<br>Updated: {{ pair.updated}}<br>ids: [{{ this.getActions(pair) }}]</div>
         </ng-template>
         <ng-template #popTitle>
             <div class="popup">{{ pair.name }}</div>
@@ -38,19 +38,19 @@
         <div class="modal-body d-flex justify-content-evenly">
           <div class="form-check-inline">
             <input class="form-check-input" type="radio" name="options" value="H1" id="H1" [(ngModel)]="selectedTf">
-            <label class="form-check-label" for="0">
+            <label class="form-check-label" for="H1">
               H1
             </label>
           </div>
           <div class="form-check-inline">
             <input class="form-check-input" type="radio" name="options" value="H4" id="H4" [(ngModel)]="selectedTf">
-            <label class="form-check-label" for="1">
+            <label class="form-check-label" for="H4">
               H4
             </label>
           </div>
           <div class="form-check-inline">
             <input class="form-check-input" type="radio" name="options" value="D1" id="D1" [(ngModel)]="selectedTf">
-            <label class="form-check-label" for="2">
+            <label class="form-check-label" for="D1">
               D1
             </label>
           </div>

@@ -47,14 +47,8 @@ export class DataService {
       });
   }
   
-  setActiveState(pair: string, activeTf: string) {
-    this.http.post(environment.apiUrl + "pair/"+pair, {"activeTF": activeTf}).subscribe(
-      (response) => {
-        console.log('POST response:', response);
-      },
-      (error) => {
-        console.error('POST error:', error);
-      });
+  setActiveState(pair: string, activeTf: string): Observable<any> {
+    return this.http.post(environment.apiUrl + "pair/"+pair, {"activeTF": activeTf});
   }
  
   getTodayString(): string {

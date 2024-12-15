@@ -218,6 +218,7 @@ public class MainControllerV2 {
 
                     newActive.getActions().clear(); // cleared since they do not correspond to actual trades
                     newActive.getActions().addAll(oldActions);
+                    newActive.getActions().stream().forEach(r -> r.setTimeframe(newActive.getTimeframe()));
                     oldActions.clear();
                     oldActive.setActive(false);
                     this.stateService.save(oldActive);
