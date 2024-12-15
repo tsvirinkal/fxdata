@@ -481,7 +481,10 @@ public class MainControllerV2 {
     private boolean nearbyTradesExist(Record rec, double price, double point) {
         var openTrades = this.tradeService.getTrades().stream().filter(t ->
                 t.getAction().getPair().equals(rec.getPair()) && t.getAction().getAction()==rec.getAction()).toList();
-        var nearbyTradesCount = openTrades.stream().filter(t -> Math.abs(FxUtils.getPips(t.getAction().getPrice(), price, point))<50).count();
+        var activeTf = this.stateService.getActiveState(rec.getPair()).getTimeframe();
+        var nearbyTradesCount = openTrades.stream().filter(t ->
+                Math.abs(FxUtils.getPips(t.getAction().getPrice(), price, point))<FxUtils.getMinPipDistance(activeTf)).count();
+
         openTrades.stream().forEach(t -> log.info("    nearbyTradesExist, openTrades:"+t.getAction().getPair()+" "+t.getAction().getAction()+", new rec action:"+rec.getAction()));
         log.info("  nearbyTradesExist, nearby trades count="+nearbyTradesCount);
         // don't open new trades if there's an existing one within 50 pips
