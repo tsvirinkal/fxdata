@@ -42,6 +42,8 @@ public class Trade {
     @Enumerated(EnumType.STRING)
     private TradeEnum command;
 
+    private String error;
+
     public Trade(Record action, TradeEnum command) {
         this.action = action;
         this.command = command;
@@ -97,6 +99,14 @@ public class Trade {
 
     public void setCommand(TradeEnum command) {
         this.command = command;
+    }
+
+    public String getError() {
+        return error;
+    }
+
+    public void setError(String error) {
+        this.error = error;
     }
 }
 

@@ -8,5 +8,6 @@ export interface Trade {
     price: number;
     profit: number;
     openedTime: string;
+    error: string;
   }
   

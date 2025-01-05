@@ -22,7 +22,8 @@ public class TradesView {
                     t.getAction().getAction().toString(),
                     t.getAction().getPrice(),
                     t.getAction().getProfit(),
-                    openedTime));
+                    openedTime,
+                    t.getError()));
         }
         return tradeView;
     }

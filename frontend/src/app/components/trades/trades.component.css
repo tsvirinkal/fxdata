@@ -27,6 +27,16 @@
 .today {
     background-color: #d6ebfc;
 }
+.error {
+  background-color: #fed680;
+}
+.error-message {
+  position: absolute; 
+  top: 5px; 
+  left: 180px; 
+  padding: 0px 0px;
+  font-weight: bolder; 
+}
 .top-right-button {
     position: absolute; 
     top: 9px; 
@@ -38,23 +48,23 @@
     --bs-btn-hover-bg: #dc2336;
     --bs-btn-hover-color: #000;
   }
-  .btn {
-    display: flex;
-    span {
-        font-size: 20px;
-        margin-top: -4px;
-        line-height: 18px;
-    }
+.btn {
+  display: flex;
+  span {
+      font-size: 20px;
+      margin-top: -4px;
+      line-height: 18px;
   }
-  .green {
-    background-color: #d6fce4;
-  }
-  .red {
-    background-color: #fac9c9;
-  }
-  .arrow {
-    height: 22px;
-    padding: 0px;
-    margin-top: -6px;
-    padding-left: 5px;
+}
+.green {
+  background-color: #d6fce4;
+}
+.red {
+  background-color: #fac9c9;
+}
+.arrow {
+  height: 22px;
+  padding: 0px;
+  margin-top: -6px;
+  padding-left: 5px;
 }

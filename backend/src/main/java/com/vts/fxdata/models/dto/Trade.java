@@ -8,8 +8,9 @@ public class Trade {
     private Double price;
     private Integer profit;
     private String openedTime;
+    private String error;
 
-    public Trade(Long id, String pair, String command, String action, Double price, Integer profit, String openedTime) {
+    public Trade(Long id, String pair, String command, String action, Double price, Integer profit, String openedTime, String error) {
         this.id = id;
         this.pair = pair;
         this.command = command;
@@ -17,6 +18,7 @@ public class Trade {
         this.price = price;
         this.profit = profit;
         this.openedTime = openedTime;
+        this.error = error;
     }
 
     public Long getId() {
@@ -73,5 +75,13 @@ public class Trade {
 
     public void setProfit(Integer profit) {
         this.profit = profit;
+    }
+
+    public String getError() {
+        return error;
+    }
+
+    public void setError(String error) {
+        this.error = error;
     }
 }

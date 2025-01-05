@@ -29,7 +29,11 @@ export class TradesComponent implements OnInit {
   }
 
   isToday(trade: Trade): any {
-    return trade.openedTime.includes(this.today);
+    return trade.openedTime!=null && trade.openedTime.includes(this.today);
+  }
+
+  isError(trade: Trade): any {
+    return trade.error != null;
   }
 
   isBuy(trade: Trade): any {
@@ -41,11 +45,11 @@ export class TradesComponent implements OnInit {
   }
 
   isPositive(trade: Trade): any {
-    return trade.profit>0;
+    return trade.profit>0 && !this.isError(trade);
   }
 
   isNegative(trade: Trade): any {
-    return trade.profit<0;
+    return trade.profit<0 && !this.isError(trade);
   }
   
   onClose(trade: Trade) {

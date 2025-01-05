@@ -4,6 +4,7 @@
   display: flex; 
   flex-wrap: wrap;
   border: 1px solid #e9ecef;
+  position: relative;
 }
 .cell {
   width: 200px; 
@@ -52,6 +53,12 @@
 .today {
   background-color: #b7ddfd;
 }
-.active {
-  border: 1px solid #0d6efd;
+.active-badge {
+  width: 10px; 
+  height: 10px;
+  background-color: #0d6efd; 
+  border-radius: 50%;
+  position: absolute;
+  top: 5px;
+  left: 5px;
 }

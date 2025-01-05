@@ -14,7 +14,8 @@
     <div *ngIf="hasAction()" class="popup">Action Details</div>
     <div *ngIf="!hasAction()" class="popup">Chart Details</div>
 </ng-template>
-<div class="cell-box" [ngClass]="{'active': this.item.active}" [ngbPopover]="popContent" [popoverTitle]="popTitle" triggers="mouseenter:mouseleave">
+<div class="cell-box" [ngbPopover]="popContent" [popoverTitle]="popTitle" triggers="mouseenter:mouseleave">
+    <div *ngIf="this.item.active" class="active-badge"></div>
     <div class="cell" [ngClass]="getStateClass()"></div>
     <div *ngIf="hasAction()" class="action-box text-center" [ngClass]="{'today': isToday()}">
         <span class="action">{{ item.action!.action }}</span>
