@@ -4,7 +4,7 @@ import { Observable, of } from 'rxjs';
 import { Day } from '../models/day.model';
 import { Pair } from '../models/pair.model';
 import { environment } from '../../environments/environment';
-import { Result } from '../models/result.model';
+import { Results } from '../models/results.model';
 import { Trade } from '../models/trade.model';
 
 var offset = new Date().getTimezoneOffset();
@@ -29,8 +29,12 @@ export class DataService {
     return this.http.get<any>(environment.apiUrl + "states" + tzoffset); 
   }
 
-  getResults(): Observable<Result[]> {
-    return this.http.get<any>(environment.apiUrl + "results" + tzoffset); 
+  getResults(filter: string): Observable<Results> {
+    var url = environment.apiUrl + "results" + tzoffset;
+    if (filter) {
+      url += "&filter=" + filter;
+    }
+    return this.http.get<any>(url); 
   }
 
   getTrades(): Observable<Trade[]> {

@@ -52,8 +52,8 @@ public class RecordService {
         return convertToDayRecordsList(this.recordRepository.getConfirmedRecordsByPair(pair), tzOffset);
     }
 
-    public List<Record> getResultRecords() {
-        return this.recordRepository.getResultRecords();
+    public List<Record> getResultRecords(String filter) {
+        return this.recordRepository.getResultRecords(filter);
     }
 
     @Transactional

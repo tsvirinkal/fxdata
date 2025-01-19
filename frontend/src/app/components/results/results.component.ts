@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { DataService } from '../../services/data.service';
 import { Result } from '../../models/result.model';
+import { Results } from '../../models/results.model';
 import { CommonModule } from '@angular/common';
 
 @Component({
@@ -12,19 +13,24 @@ import { CommonModule } from '@angular/common';
 })
 export class ResultsComponent implements OnInit {
 
-  results: Result[] = [];
+  results: Results = {
+    results: [], 
+    archives: []
+  };
   total = 0;
   count = 0;
   today = 'today';
+  filter = '';
+  filterTitle? = '';
 
   constructor(private dataService: DataService) {}
 
   ngOnInit(): void {
     // query for results 
-    this.dataService.getResults().subscribe(results => {
+    this.dataService.getResults('').subscribe(results => {
       this.results = results;
-      this.total = this.results.reduce((sum, result) => sum + result.profit, 0);
-      this.count = results.length;
+      this.total = this.results.results.reduce((sum, result) => sum + result.profit, 0);
+      this.count = results.results.length;
     });
     this.today = this.dataService.getTodayString();
   }
@@ -52,5 +58,19 @@ export class ResultsComponent implements OnInit {
       'today': this.isToday(r),
       [r.state.toLowerCase()]: true
     };
+  }
+  show(filter: string) {
+    this.dataService.getResults(filter).subscribe(results => {
+      this.results = results;
+      this.total = this.results.results.reduce((sum, result) => sum + result.profit, 0);
+      this.count = results.results.length;
+      this.filterTitle = results.archives.find((v => v.filter==filter))?.timePeriod;
+    });
+    this.filter=filter;
+  }
+  cancel() {
+    this.filter = '';
+    this.filterTitle = '';
+    this.ngOnInit();
   }
 }

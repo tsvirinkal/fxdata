@@ -9,9 +9,11 @@ import com.vts.fxdata.entities.Trade;
 import com.vts.fxdata.models.*;
 import com.vts.fxdata.models.dto.*;
 import com.vts.fxdata.notifications.NotificationServer;
+import com.vts.fxdata.redis.ResultArchive;
 import com.vts.fxdata.repositories.*;
 import com.vts.fxdata.utils.FxUtils;
 import com.vts.fxdata.utils.TimeUtils;
+import jakarta.transaction.Transactional;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringStyle;
 import org.slf4j.Logger;
@@ -28,14 +30,17 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicReference;
 
 @RestController
 @RequestMapping("api/v2/fxdata")
 @CrossOrigin(origins = "http://localhost:8080")
 public class MainControllerV2 {
     private static final Logger log = LoggerFactory.getLogger(MainControllerV2.class);
-
+    private static final DateTimeFormatter yearMonthFormat = DateTimeFormatter.ofPattern("yyyy-MM");
+    private static final DateTimeFormatter monthYearFormat = DateTimeFormatter.ofPattern("MMMM yyyy");
     @Autowired
     private final RecordService recordService;
     @Autowired
@@ -46,7 +51,8 @@ public class MainControllerV2 {
     private final TradeService tradeService;
     @Autowired
     private final ClientService clientService;
-
+    @Autowired
+    private final ResultArchive redisClient;
     @Autowired
     private final HttpServletRequest request;
 
@@ -55,12 +61,13 @@ public class MainControllerV2 {
                             TradeService tradeService,
                             ClientService clientService,
                             StateService stateService,
-                            HttpServletRequest request) {
+                            ResultArchive redisClient, HttpServletRequest request) {
         this.recordService = recordService;
         this.confirmationService = confirmationService;
         this.tradeService = tradeService;
         this.clientService = clientService;
         this.stateService = stateService;
+        this.redisClient = redisClient;
         this.request = request;
     }
 
@@ -177,7 +184,7 @@ public class MainControllerV2 {
 
     @PostMapping("/heartbeat")
     public ResponseEntity<String> addClient(@RequestBody Heartbeat request) { // TODO pass in an updated target
-        if (request==null || request.getActiveTF()<0) {
+        if (request==null) {
             return new ResponseEntity<>(null, HttpStatus.BAD_REQUEST);
         }
 
@@ -190,18 +197,23 @@ public class MainControllerV2 {
         for(TfState state : this.stateService.getStates(request.getPair())) {
             updateStateMetrics(state, request, request.getActiveTF()==activeTf.ordinal());
         }
-
         return new ResponseEntity<>(Integer.toString(activeTf.ordinal()), HttpStatus.OK);
     }
 
     @GetMapping("/results")
-    public List<Result> getResults(@RequestParam(name="tzo", required = false) Integer tzOffset) {
-        var results = new ArrayList<Result>();
-        for(var r : this.recordService.getResultRecords()) {
+    public Results getResults(@RequestParam(name="tzo", required = false) Integer tzOffset,
+                                   @RequestParam(name="filter", required = false) String filter) {
+        var currResults = new ArrayList<Result>();
+        var today = LocalDateTime.now(ZoneOffset.UTC).minusMinutes(tzOffset==null ? 0:tzOffset.intValue());
+        if (filter == null || filter.isEmpty()) {
+            filter = today.format(yearMonthFormat);
+        }
+
+        for(var r : this.recordService.getResultRecords(filter)) {
             var startTime = r.getStartTime().minusMinutes(tzOffset==null ? 0:tzOffset.intValue());
             var endTime = r.getEndTime().minusMinutes(tzOffset==null ? 0:tzOffset.intValue());
             if (r.getAction()==null) continue; // TODO remove
-            results.add(new Result(
+            currResults.add(new Result(
                     r.getPair(),
                     r.getTimeframe().toString(),
                     r.getAction().toString(),
@@ -217,6 +229,9 @@ public class MainControllerV2 {
                     TimeUtils.formatTime(endTime),
                     TimeUtils.formatDuration(r.getStartTime(), r.getEndTime(), false)));
         }
+
+        calculateProfitForArchives(today);
+        var results = new Results(currResults, readArchivedResults(today));
         return results;
     }
 
@@ -265,6 +280,7 @@ public class MainControllerV2 {
         return new ResponseEntity<>("closed", HttpStatus.OK);
     }
 
+    @Transactional
     public ResponseEntity<String> handleConfirmation(@RequestBody Confirmation request) throws PushClientException {
 
         // get confirmation record
@@ -397,6 +413,10 @@ public class MainControllerV2 {
     private Record handleConfirmation(com.vts.fxdata.entities.Confirmation confirmation) {
         String prefix = "  handleConfirmation confirmation ID="+confirmation.getId();
         var unconfirmedRecordIds = confirmation.getRecordIds();
+        if (unconfirmedRecordIds==null || unconfirmedRecordIds.size()==0) {
+            log.warn("unconfirmedRecordIds==null || unconfirmedRecordIds.size()==0");
+            return null;
+        }
         // retrieve records from the newest to the oldest
         Collections.reverse(unconfirmedRecordIds);
         var iterator = unconfirmedRecordIds.iterator();
@@ -666,7 +686,7 @@ public class MainControllerV2 {
 
                 this.recordService.saveAndFlush(newRec);
                 this.tradeService.save(new Trade(newRec, TradeEnum.Open));
-                var state = this.stateService.getState(rec.getPair(), rec.getTimeframe().ordinal());
+                var state = this.stateService.getActiveState(rec.getPair());
                 if (state != null) {
                     state.getActions().add(newRec);
                     this.stateService.saveAndFlush(state);
@@ -689,5 +709,33 @@ public class MainControllerV2 {
             lowPrice = closePrice;    // ideally lower than the price before
         }
         action.setProfit(FxUtils.getPips(highPrice, lowPrice, point));
+    }
+
+    private void calculateProfitForArchives(LocalDateTime today) {
+        String previousMonthFilter;
+        for (int i=1; i<=6; i++) {
+            previousMonthFilter = today.minusMonths(i).format(yearMonthFormat);
+            if (redisClient.readValue(previousMonthFilter) == null) {
+                // query previous month results, calculate and save the totals to Redis
+                var profit = new AtomicReference<>(0);
+                this.recordService.getResultRecords(previousMonthFilter).stream().forEach(r -> profit.updateAndGet(v -> v + r.getProfit()));
+                redisClient.writeValue(previousMonthFilter, profit.toString());
+            }
+        }
+    }
+
+    private List<ArchivedResult> readArchivedResults(LocalDateTime today) {
+        List<ArchivedResult> archivedResults = new ArrayList<>();
+
+        String previousMonthFilter;
+        for (int i=1; i<=6; i++) {
+            previousMonthFilter = today.minusMonths(i).format(yearMonthFormat);
+            var profit = redisClient.readValue(previousMonthFilter);
+            if (profit == null) {// || profit.equals("0")) {
+                break;
+            }
+            archivedResults.add(new ArchivedResult(today.minusMonths(i).format(monthYearFormat), profit, previousMonthFilter));
+        }
+        return archivedResults;
     }
 }

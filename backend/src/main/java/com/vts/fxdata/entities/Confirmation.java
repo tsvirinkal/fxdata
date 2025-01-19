@@ -28,7 +28,7 @@ public class Confirmation {
             generator = "confirmation_sequence"
     )
     private Long Id;
-    @ElementCollection
+    @ElementCollection(fetch = FetchType.EAGER)
     @Column(name = "record_ids")
     private List<Long> recordIds;
     private String pair;
