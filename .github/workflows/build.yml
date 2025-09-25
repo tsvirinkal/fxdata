@@ -19,7 +19,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '18'
+          node-version: "18"
 
       # Step 3: Install dependencies
       - name: Install dependencies
@@ -35,7 +35,7 @@ jobs:
 
       # Optional Step 5: Upload the built files as an artifact
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: build-artifacts
           path: frontend/dist/
