@@ -77,6 +77,11 @@ public class MainControllerV2 {
         log.info(String.format("/addrecord body=%s",dto));
 
         try {
+            var tfState = this.stateService.getState(request.getPair(), TimeframeEnum.valueOf(request.getTimeframe()).ordinal());
+            if (!tfState.isActive()) {
+                log.info(String.format("ignoring new signal as timeframe %s is not active",request.getTimeframe()));
+                return new ResponseEntity<>(null, HttpStatus.OK);
+            }
             var rec = new Record(request.getPair(),
                     TimeframeEnum.valueOf(request.getTimeframe()),
                     ActionEnum.valueOf(request.getAction()),
@@ -703,18 +708,19 @@ public class MainControllerV2 {
     }
 
     private void cleanupConfirmations(Heartbeat request) {
-        var prefix = String.format("Heartbeat: Removing obsolete confirmation record for %s", request.getPair());
         // invalidate obsolete confirmation records
         if (request.getLevels()[0]>0 && request.getLevels()[1]>0) {
             var confirmationRecs = this.confirmationService.getPendingConfirmations(request.getPair());
             for (var confirmation : confirmationRecs) {
+                var prefix = String.format("Heartbeat: Removing obsolete confirmation record for %s on %s,%s", confirmation.getAction().toString(), request.getPair(), confirmation.getTimeframe());
                 // check if the risk is smaller than potential reward (the price has not gone too far yet)
                 double mediumLevel = (request.getLevels()[0] + request.getLevels()[1]) / 2;
                 double distanceToMedium = Math.abs(request.getPrice() - mediumLevel);
                 if (confirmation.getAction() == ActionEnum.Buy) {
                     double distanceToLower = Math.abs(request.getPrice() - request.getLevels()[0]);
                     if (distanceToMedium < distanceToLower) {
-                        log.info(String.format("%s,%s as the price has gone too far up, distanceToLower=%4.4f, distanceToMedium=%4.4f",prefix, confirmation.getTimeframe(), distanceToLower, distanceToMedium));
+                        log.info(String.format("%s as the price has gone too far up, distanceToLower=%4.4f, distanceToMedium=%4.4f, price=%4.4f, bottom=%4.4f, medium=%4.4f, top=%4.4f",
+                                prefix, distanceToLower, distanceToMedium, request.getPrice(), request.getLevels()[0], mediumLevel, request.getLevels()[1]));
                         this.recordService.deleteAll(confirmation.getRecordIds().iterator());
                         this.confirmationService.deleteConfirmation(confirmation.getId());
                     }
@@ -722,7 +728,8 @@ public class MainControllerV2 {
                 if (confirmation.getAction() == ActionEnum.Sell) {
                     double distanceToUpper = Math.abs(request.getPrice() - request.getLevels()[1]);
                     if (distanceToMedium < distanceToUpper) {
-                        log.info(String.format("%s,%s as the price has gone too far down, distanceToUpper=%4.4f, distanceToMedium=%4.4f",prefix, confirmation.getTimeframe(), distanceToUpper, distanceToMedium));
+                        log.info(String.format("%s as the price has gone too far down, distanceToUpper=%4.4f, distanceToMedium=%4.4f, price=%4.4f, bottom=%4.4f, medium=%4.4f, top=%4.4f",
+                                prefix, distanceToUpper, distanceToMedium, request.getPrice(), request.getLevels()[0], mediumLevel, request.getLevels()[1]));
                         this.recordService.deleteAll(confirmation.getRecordIds().iterator());
                         this.confirmationService.deleteConfirmation(confirmation.getId());
                     }
