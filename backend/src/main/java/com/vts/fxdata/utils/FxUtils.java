@@ -36,12 +36,16 @@ public class FxUtils {
      * @param timeframe
      * @return
      */
-    public static int getMinPipDistance(TimeframeEnum timeframe) {
+    public static int getMinPipDistance(TimeframeEnum timeframe, String pair) {
         switch (timeframe) {
-            case H1: return 50;
-            case H4: return 75;
-            case D1: return 150;
+            case H1: return isHighVolatilityPair(pair) ? 150:50;
+            case H4: return isHighVolatilityPair(pair) ? 225:75;
+            case D1: return isHighVolatilityPair(pair) ? 450:150;
             default: return Integer.MAX_VALUE;
         }
+    }
+
+    private static boolean isHighVolatilityPair(String pair) {
+        return pair.equals("XAUUSD");
     }
 }

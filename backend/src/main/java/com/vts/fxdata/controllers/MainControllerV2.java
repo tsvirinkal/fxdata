@@ -183,7 +183,7 @@ public class MainControllerV2 {
     }
 
     @PostMapping("/heartbeat")
-    public ResponseEntity<String> addClient(@RequestBody Heartbeat request) { // TODO pass in an updated target
+    public ResponseEntity<String> handleHeartbeat(@RequestBody Heartbeat request) {
         if (request==null) {
             return new ResponseEntity<>(null, HttpStatus.BAD_REQUEST);
         }
@@ -193,6 +193,9 @@ public class MainControllerV2 {
         var openTrades = this.tradeService.getTrades().stream().filter(t -> t.getAction().getPair().equals(pair)).toList();
         var activeTf = this.stateService.getActiveState(pair).getTimeframe();
         handleDoublingDown(openTrades, request.getPrice(), request.getPoint(), activeTf);
+
+        // remove confirmation records if the risk is high (the price has gone too far already)
+        cleanupConfirmations(request);
 
         for(TfState state : this.stateService.getStates(request.getPair())) {
             updateStateMetrics(state, request, request.getActiveTF()==activeTf.ordinal());
@@ -299,8 +302,8 @@ public class MainControllerV2 {
             // mark the newest record as confirmed and delete the rest
             rec = handleConfirmation(confirmationRec);
             if (rec==null) {
-                log.info("/confirmed, recId="+rec.getId()+", Confirmation is ignored as record wasn't found.");
-                return new ResponseEntity<>("Confirmation is ignored as record wasn't found.", HttpStatus.NOT_FOUND);
+                log.info("/confirmed, rec=null, confirmationRecId="+confirmationRec.getId()+", Confirmation is ignored.");
+                return new ResponseEntity<>("Confirmation is ignored.", HttpStatus.NOT_FOUND);
             }
 
             pair = rec.getPair();
@@ -323,7 +326,7 @@ public class MainControllerV2 {
                 // delete all records that signal to act against the trend
                 this.recordService.deleteAll(confirmationRec.getRecordIds().iterator());
                 this.confirmationService.deleteConfirmation(request.getId());
-                return new ResponseEntity<>(null, HttpStatus.NOT_ACCEPTABLE);
+                return new ResponseEntity<>("Confirmation is ignored as the confirmed action direction does not match the state's.", HttpStatus.NOT_ACCEPTABLE);
             }
 
             // check for existing trades nearby
@@ -331,7 +334,7 @@ public class MainControllerV2 {
                 log.info(String.format("/confirmed, recId=%s, Ignoring action %s on %s due to an existing trade nearby.", rec.getId(), rec.getAction().toString(), pair));
                 this.recordService.deleteAll(confirmationRec.getRecordIds().iterator());
                 this.confirmationService.deleteConfirmation(request.getId());
-                return new ResponseEntity<>(null, HttpStatus.NOT_ACCEPTABLE);
+                return new ResponseEntity<>("Confirmation is ignored due to an existing trade nearby.", HttpStatus.NOT_ACCEPTABLE);
             }
 
             // ignore small waves and missed opportunities (missed pips must be 33% or less)
@@ -340,7 +343,7 @@ public class MainControllerV2 {
                 log.info(String.format("/confirmed, recId=%s, Ignoring action %s on %s due to low risk/reward ratio", rec.getId(), rec.getAction().toString(), pair));
                 this.recordService.deleteAll(confirmationRec.getRecordIds().iterator());
                 this.confirmationService.deleteConfirmation(request.getId());
-                return new ResponseEntity<>(null, HttpStatus.NOT_ACCEPTABLE);
+                return new ResponseEntity<>("Confirmation is ignored due to a low risk/reward ratio.", HttpStatus.NOT_ACCEPTABLE);
             }
 
             // close existing positions in the opposite direction if any
@@ -425,7 +428,7 @@ public class MainControllerV2 {
         log.info(prefix+", unconfirmedRecordIds size="+unconfirmedRecordIds.size());
 
         if (!iterator.hasNext()) {
-            log.info(prefix + ", No records found");
+            log.info(prefix + ", No unconfirmed records found");
             return null;
         }
 
@@ -492,7 +495,7 @@ public class MainControllerV2 {
                 t.getAction().getPair().equals(rec.getPair()) && t.getAction().getAction()==rec.getAction()).toList();
         var activeTf = this.stateService.getActiveState(rec.getPair()).getTimeframe();
         var nearbyTradesCount = openTrades.stream().filter(t ->
-                Math.abs(FxUtils.getPips(t.getAction().getPrice(), price, point))<FxUtils.getMinPipDistance(activeTf)).count();
+                Math.abs(FxUtils.getPips(t.getAction().getPrice(), price, point))<FxUtils.getMinPipDistance(activeTf, rec.getPair())).count();
 
         openTrades.stream().forEach(t -> log.info("    nearbyTradesExist, openTrades:"+t.getAction().getPair()+" "+t.getAction().getAction()+", new rec action:"+rec.getAction()));
         log.info("  nearbyTradesExist, nearby trades count="+nearbyTradesCount);
@@ -676,7 +679,8 @@ public class MainControllerV2 {
                 .max(Comparator.comparingInt(t -> t.getAction().getProfit()));
         if (lt.isPresent()) {
             var rec = lt.get().getAction();
-            if (lt.get().getAction().getProfit() < -FxUtils.getMinPipDistance(activeTf)) {
+            if (lt.get().getAction().getProfit() < -FxUtils.getMinPipDistance(activeTf, rec.getPair())) {
+                log.info(String.format("handleDoublingDown: existing trade found on %s, profit in pips=%d (<?) %d", rec.getPair(), rec.getProfit(), (-FxUtils.getMinPipDistance(activeTf, rec.getPair()))));
                 // double down
                 var newRec = new Record(rec.getPair(), activeTf, rec.getAction(), rec.getState(), price, true);
                 newRec.setStartPrice(rec.getStartPrice());
@@ -686,16 +690,47 @@ public class MainControllerV2 {
 
                 this.recordService.saveAndFlush(newRec);
                 this.tradeService.save(new Trade(newRec, TradeEnum.Open));
+                log.info(String.format("handleDoublingDown: new action and new trade saved for %s,%s", newRec.getPair(), newRec.getTimeframe()));
                 var state = this.stateService.getActiveState(rec.getPair());
                 if (state != null) {
                     state.getActions().add(newRec);
+                    log.info(String.format("handleDoublingDown: new action added to the state for %s,%s", rec.getPair(), state.getTimeframe()));
                     this.stateService.saveAndFlush(state);
                 }
-                log.info(String.format("Added a new action: %s on %s to double down.", rec.getAction().toString(), rec.getPair()));
+                log.info(String.format("handleDoublingDown: A new action: %s on %s,%s successfully added.", rec.getAction().toString(), rec.getPair(), state.getTimeframe()));
             }
         }
     }
-    
+
+    private void cleanupConfirmations(Heartbeat request) {
+        var prefix = String.format("Heartbeat: Removing obsolete confirmation record for %s", request.getPair());
+        // invalidate obsolete confirmation records
+        if (request.getLevels()[0]>0 && request.getLevels()[1]>0) {
+            var confirmationRecs = this.confirmationService.getPendingConfirmations(request.getPair());
+            for (var confirmation : confirmationRecs) {
+                // check if the risk is smaller than potential reward (the price has not gone too far yet)
+                double mediumLevel = (request.getLevels()[0] + request.getLevels()[1]) / 2;
+                double distanceToMedium = Math.abs(request.getPrice() - mediumLevel);
+                if (confirmation.getAction() == ActionEnum.Buy) {
+                    double distanceToLower = Math.abs(request.getPrice() - request.getLevels()[0]);
+                    if (distanceToMedium < distanceToLower) {
+                        log.info(String.format("%s,%s as the price has gone too far up, distanceToLower=%4.4f, distanceToMedium=%4.4f",prefix, confirmation.getTimeframe(), distanceToLower, distanceToMedium));
+                        this.recordService.deleteAll(confirmation.getRecordIds().iterator());
+                        this.confirmationService.deleteConfirmation(confirmation.getId());
+                    }
+                }
+                if (confirmation.getAction() == ActionEnum.Sell) {
+                    double distanceToUpper = Math.abs(request.getPrice() - request.getLevels()[1]);
+                    if (distanceToMedium < distanceToUpper) {
+                        log.info(String.format("%s,%s as the price has gone too far down, distanceToUpper=%4.4f, distanceToMedium=%4.4f",prefix, confirmation.getTimeframe(), distanceToUpper, distanceToMedium));
+                        this.recordService.deleteAll(confirmation.getRecordIds().iterator());
+                        this.confirmationService.deleteConfirmation(confirmation.getId());
+                    }
+                }
+            }
+        }
+    }
+
     private void closeAction(Record action, double closePrice, double point) {
         action.setEndTime(TimeUtils.removeSeconds(LocalDateTime.now(ZoneOffset.UTC)));
         action.setExitPrice(closePrice);  

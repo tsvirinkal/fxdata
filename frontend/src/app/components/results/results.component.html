@@ -11,8 +11,6 @@
           <th class="w-12 header">Exit Price</th>
           <th class="w-12 header">Target (pips)</th>
           <th class="w-12 header">Profit (pips)</th>
-          <th class="w-12 header">Drawdown (pips)</th>
-          <th class="w-12 header">Progress Range (%)</th>
           <th class="w-12 header">Time Started</th>
           <th class="w-12 header">Time Ended</th>
           <th class="w-12 header">Duration</th>
@@ -27,14 +25,12 @@
           <td class="column" [ngClass]="{'today': isToday(res)}">{{ res.exitPrice }}</td>
           <td class="column" [ngClass]="{'today': isToday(res)}">{{ res.targetPips }}</td>
           <td class="column" [ngClass]="{'today': isToday(res),'green': isPositive(res),'red': isNegative(res)}">{{ res.profit }}</td>
-          <td class="column" [ngClass]="{'today': isToday(res)}">{{ res.maxDrawdown }}</td>
-          <td class="column" [ngClass]="{'today': isToday(res)}">[{{ res.minProgress }}, {{ res.maxProgress }}]</td>
           <td class="column" [ngClass]="{'today': isToday(res)}">{{ res.startTime }}</td>
           <td class="column" [ngClass]="{'today': isToday(res)}">{{ res.endTime }}</td>
           <td class="column" [ngClass]="{'today': isToday(res)}">{{ res.duration }}</td>
         </tr>
         <tr class="header">
-          <td colspan="2"></td><td colspan="2"><b>Total Results: {{ count }}</b></td><td colspan="2"><b>Total Profit (pips):</b></td><td><b>{{ total }}</b></td><td colspan="5"></td></tr>
+          <td colspan="2"></td><td colspan="2"><b>Total Results: {{ count }}</b></td><td colspan="2"><b>Total Profit (pips):</b></td><td><b>{{ total }}</b></td><td colspan="3"></td></tr>
       </tbody>
     </table> 
 
