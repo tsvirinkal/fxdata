@@ -160,5 +160,14 @@ public class TfState {
     public void setActive(boolean active) {
         isActive = active;
     }
+
+    public static double[] getTFLevels(TimeframeEnum timeframe, double levels[]) {
+        switch(timeframe) {
+            case H1: return new double[] {levels[0],levels[1]};
+            case H4: return new double[] {levels[2],levels[3]};
+            case D1: return new double[] {levels[4],levels[5]};
+            default: throw new RuntimeException("Invalid timeframe "+timeframe);
+        }
+    }
 }
 

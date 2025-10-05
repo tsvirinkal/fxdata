@@ -77,11 +77,6 @@ public class MainControllerV2 {
         log.info(String.format("/addrecord body=%s",dto));
 
         try {
-            var tfState = this.stateService.getState(request.getPair(), TimeframeEnum.valueOf(request.getTimeframe()).ordinal());
-            if (!tfState.isActive()) {
-                log.info(String.format("ignoring new signal as timeframe %s is not active",request.getTimeframe()));
-                return new ResponseEntity<>(null, HttpStatus.OK);
-            }
             var rec = new Record(request.getPair(),
                     TimeframeEnum.valueOf(request.getTimeframe()),
                     ActionEnum.valueOf(request.getAction()),
@@ -632,7 +627,7 @@ public class MainControllerV2 {
         this.stateService.save(state);
     }
 
-    private void updateActionMetrics(Record action, double currPrice, double point, boolean updateTarget, double levels[]) {
+    private void updateActionMetrics(Record action, double currPrice, double point, boolean updateTarget, double allLevels[]) {
         int profit = 0;
         var progress = 0;
         var targetPips = action.getTargetPips();;
@@ -641,12 +636,13 @@ public class MainControllerV2 {
         var maxProgress = action.getMaxProgress();
         var actionPrice = action.getPrice();
         if (updateTarget) {
+            var tfLevels = TfState.getTFLevels(action.getTimeframe(), allLevels);
             switch (action.getAction()) {
                 case Buy:
-                    action.setTargetPrice(levels[1]);
+                    action.setTargetPrice(tfLevels[1]);
                     break;
                 case Sell:
-                    action.setTargetPrice(levels[0]);
+                    action.setTargetPrice(tfLevels[0]);
                     break;
             }
         }
@@ -709,27 +705,28 @@ public class MainControllerV2 {
 
     private void cleanupConfirmations(Heartbeat request) {
         // invalidate obsolete confirmation records
-        if (request.getLevels()[0]>0 && request.getLevels()[1]>0) {
-            var confirmationRecs = this.confirmationService.getPendingConfirmations(request.getPair());
-            for (var confirmation : confirmationRecs) {
+        var confirmationRecs = this.confirmationService.getPendingConfirmations(request.getPair());
+        for (var confirmation : confirmationRecs) {
+            var tfLevels = TfState.getTFLevels(confirmation.getTimeframe(), request.getLevels());
+            if (tfLevels[0]>0 && tfLevels[1]>0) {
                 var prefix = String.format("Heartbeat: Removing obsolete confirmation record for %s on %s,%s", confirmation.getAction().toString(), request.getPair(), confirmation.getTimeframe());
                 // check if the risk is smaller than potential reward (the price has not gone too far yet)
-                double mediumLevel = (request.getLevels()[0] + request.getLevels()[1]) / 2;
+                double mediumLevel = (tfLevels[0] + tfLevels[1]) / 2;
                 double distanceToMedium = Math.abs(request.getPrice() - mediumLevel);
                 if (confirmation.getAction() == ActionEnum.Buy) {
-                    double distanceToLower = Math.abs(request.getPrice() - request.getLevels()[0]);
+                    double distanceToLower = Math.abs(request.getPrice() - tfLevels[0]);
                     if (distanceToMedium < distanceToLower) {
                         log.info(String.format("%s as the price has gone too far up, distanceToLower=%4.4f, distanceToMedium=%4.4f, price=%4.4f, bottom=%4.4f, medium=%4.4f, top=%4.4f",
-                                prefix, distanceToLower, distanceToMedium, request.getPrice(), request.getLevels()[0], mediumLevel, request.getLevels()[1]));
+                                prefix, distanceToLower, distanceToMedium, request.getPrice(), tfLevels[0], mediumLevel, tfLevels[1]));
                         this.recordService.deleteAll(confirmation.getRecordIds().iterator());
                         this.confirmationService.deleteConfirmation(confirmation.getId());
                     }
                 }
                 if (confirmation.getAction() == ActionEnum.Sell) {
-                    double distanceToUpper = Math.abs(request.getPrice() - request.getLevels()[1]);
+                    double distanceToUpper = Math.abs(request.getPrice() - tfLevels[1]);
                     if (distanceToMedium < distanceToUpper) {
                         log.info(String.format("%s as the price has gone too far down, distanceToUpper=%4.4f, distanceToMedium=%4.4f, price=%4.4f, bottom=%4.4f, medium=%4.4f, top=%4.4f",
-                                prefix, distanceToUpper, distanceToMedium, request.getPrice(), request.getLevels()[0], mediumLevel, request.getLevels()[1]));
+                                prefix, distanceToUpper, distanceToMedium, request.getPrice(), tfLevels[0], mediumLevel, tfLevels[1]));
                         this.recordService.deleteAll(confirmation.getRecordIds().iterator());
                         this.confirmationService.deleteConfirmation(confirmation.getId());
                     }
